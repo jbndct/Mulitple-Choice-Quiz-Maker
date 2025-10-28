@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Quiz Generator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>AI Quiz Generator</h1>
+        <p>Upload your lecture notes (PDF, TXT) and get a quiz in seconds.</p>
+        
+        <form id="upload-form">
+            <input type="file" id="file-input" name="file" accept=".pdf,.txt,.docx" required>
+            <button type="submit">Generate Quiz</button>
+        </form>
+
+        <div class="loader-container hidden">
+            <div class="loader"></div>
+            <p>Generating your quiz, please wait...</p>
+        </div>
+
+        <div id="quiz-container" class="hidden">
+            <p id="question-text"></p>
+            <div id="options-container"></div>
+            <button id="next-btn">Next Question</button>
+            <p id="feedback-text"></p>
+        </div>
+
+        <div id="results-container" class="hidden">
+            <h2>Quiz Complete!</h2>
+            <p>Your score: <span id="score"></span></p>
+            <button id="restart-btn">Try Another File</button>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
