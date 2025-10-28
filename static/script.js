@@ -1,7 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Get references to all the HTML elements
+    // --- Element References ---
     const uploadForm = document.getElementById('upload-form');
     const fileInput = document.getElementById('file-input');
+    const numQuestionsInput = document.getElementById('num-questions');
     const loader = document.querySelector('.loader-container');
     const quizContainer = document.getElementById('quiz-container');
     const resultsContainer = document.getElementById('results-container');
@@ -11,20 +12,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const nextBtn = document.getElementById('next-btn');
     const scoreSpan = document.getElementById('score');
     const restartBtn = document.getElementById('restart-btn');
+    const regenerateBtn = document.getElementById('regenerate-btn'); // NEW: Regenerate button
 
-    // Global variables to hold quiz state
+    // --- State Variables ---
     let quizData = [];
     let currentQuestionIndex = 0;
     let score = 0;
+    let lastUploadedFile = null; // NEW: Variable to store the last used file
 
-    // --- FORM SUBMISSION LOGIC ---
-    uploadForm.addEventListener('submit', (e) => {
-        e.preventDefault();
+    // --- Main Function to Handle Quiz Generation ---
+    function generateQuiz(file, numQuestions) {
         const formData = new FormData();
-        formData.append('file', fileInput.files[0]);
+        formData.append('file', file);
+        formData.append('num_questions', numQuestions);
 
-        // Hide form and show loader
+        // Hide UI elements and show loader
         uploadForm.classList.add('hidden');
+        resultsContainer.classList.add('hidden');
         loader.classList.remove('hidden');
 
         fetch('/generate-quiz', {
@@ -35,32 +39,61 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(data => {
             if (data.error) {
                 alert("Error: " + data.error);
-                resetQuiz();
+                resetToUpload(); // Go back to the upload screen on error
                 return;
             }
             
-            // The AI returns a JSON *string*, so we need to parse it
             try {
                 quizData = JSON.parse(data.quiz_data);
+                if (quizData.length === 0) {
+                    alert("The AI could not generate a quiz from this file. Please try another.");
+                    resetToUpload();
+                    return;
+                }
                 startQuiz();
             } catch (error) {
                 alert("Failed to parse quiz data from the AI. Please try a different file.");
-                resetQuiz();
+                resetToUpload();
             }
         })
         .catch(error => {
             console.error('Error:', error);
             alert('An error occurred. Please check the console and try again.');
-            resetQuiz();
+            resetToUpload();
         });
+    }
+
+    // --- Event Listeners ---
+    uploadForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const file = fileInput.files[0];
+        if (file) {
+            lastUploadedFile = file; // Store the file for regeneration
+            const numQuestions = numQuestionsInput.value;
+            generateQuiz(lastUploadedFile, numQuestions);
+        } else {
+            alert("Please select a file.");
+        }
     });
 
-    // --- QUIZ LOGIC FUNCTIONS ---
+    regenerateBtn.addEventListener('click', () => {
+        if (lastUploadedFile) {
+            const numQuestions = numQuestionsInput.value; // Use the current number in the input
+            console.log("Regenerating quiz with the same file.");
+            generateQuiz(lastUploadedFile, numQuestions);
+        } else {
+            alert("No file has been uploaded yet.");
+        }
+    });
+    
+    restartBtn.addEventListener('click', resetToUpload);
+    nextBtn.addEventListener('click', handleNextQuestion);
+
+    // --- Quiz Logic Functions ---
     function startQuiz() {
         currentQuestionIndex = 0;
         score = 0;
         loader.classList.add('hidden');
-        resultsContainer.classList.add('hidden');
         quizContainer.classList.remove('hidden');
         displayQuestion();
     }
@@ -68,19 +101,16 @@ document.addEventListener('DOMContentLoaded', () => {
     function displayQuestion() {
         feedbackText.textContent = '';
         nextBtn.classList.add('hidden');
-        
-        // Clear previous options
         optionsContainer.innerHTML = ''; 
 
         const question = quizData[currentQuestionIndex];
         questionText.textContent = question.question;
 
-        // Create a button for each option
         for (const [key, value] of Object.entries(question.options)) {
             const button = document.createElement('button');
             button.textContent = `${key}: ${value}`;
             button.classList.add('option-btn');
-            button.dataset.answer = key; // Store the option letter (A, B, C, D)
+            button.dataset.answer = key;
             button.addEventListener('click', checkAnswer);
             optionsContainer.appendChild(button);
         }
@@ -91,10 +121,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedAnswer = selectedButton.dataset.answer;
         const correctAnswer = quizData[currentQuestionIndex].correct_answer;
 
-        // Disable all buttons after an answer is chosen
         document.querySelectorAll('.option-btn').forEach(btn => {
             btn.disabled = true;
-            // Highlight the correct answer
             if (btn.dataset.answer === correctAnswer) {
                 btn.classList.add('correct');
             }
@@ -110,18 +138,17 @@ document.addEventListener('DOMContentLoaded', () => {
             feedbackText.style.color = "#e74c3c";
         }
         
-        // Show the 'Next' button
         nextBtn.classList.remove('hidden');
     }
 
-    nextBtn.addEventListener('click', () => {
+    function handleNextQuestion() {
         currentQuestionIndex++;
         if (currentQuestionIndex < quizData.length) {
             displayQuestion();
         } else {
             showResults();
         }
-    });
+    }
 
     function showResults() {
         quizContainer.classList.add('hidden');
@@ -129,13 +156,12 @@ document.addEventListener('DOMContentLoaded', () => {
         scoreSpan.textContent = `${score} / ${quizData.length}`;
     }
 
-    function resetQuiz() {
+    function resetToUpload() {
         quizContainer.classList.add('hidden');
         resultsContainer.classList.add('hidden');
         loader.classList.add('hidden');
         uploadForm.classList.remove('hidden');
         fileInput.value = ''; // Clear the file input
+        lastUploadedFile = null;
     }
-
-    restartBtn.addEventListener('click', resetQuiz);
 });
