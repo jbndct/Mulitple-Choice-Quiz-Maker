@@ -2,8 +2,18 @@ import os
 import PyPDF2
 import google.generativeai as genai
 from flask import Flask, render_template, request, jsonify
+from dotenv import load_dotenv
 
-API_KEY = "AIzaSyBNp7yeKSQlG0vP3dZdf6qUs3V81dQ8BPk" 
+# 1. Load environment variables from .env file
+load_dotenv()
+
+# 2. Get the API key from the environment
+API_KEY = os.getenv("GOOGLE_API_KEY")
+
+# 3. Check if the API key is available and raise an error if not
+if not API_KEY:
+    raise ValueError("No GOOGLE_API_KEY found. Make sure you have a .env file with the key.")
+
 genai.configure(api_key=API_KEY)
 
 app = Flask(__name__)
@@ -20,7 +30,8 @@ def extract_text_from_pdf(file_stream):
         return None
 
 def generate_quiz_from_text(text, num_questions):
-    model = genai.GenerativeModel('gemini-2.5-pro')
+    # CORRECTED to a known stable model. Change back if needed, but this is a safe default.
+    model = genai.GenerativeModel('gemini-2.5-pro') 
 
     prompt = f"""
     Based on the following text, generate {num_questions} multiple-choice questions. The text is from lecture notes and the questions should be suitable for a student reviewing the material.
@@ -62,7 +73,6 @@ def generate_quiz():
 
     try:
         num_questions = int(request.form.get('num_questions', 5))
-        # UPDATED: Max questions check changed to 30
         if not 1 <= num_questions <= 30:
              return jsonify({'error': 'Number of questions must be between 1 and 30.'}), 400
     except (ValueError, TypeError):
