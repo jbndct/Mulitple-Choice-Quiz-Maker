@@ -1,6 +1,6 @@
-# 🧠 AI Quiz Generator
+# 🧠 Multiple Choice Quiz Generator
 
-The AI Quiz Generator is a web application that automatically creates a multiple-choice quiz from your uploaded lecture notes. 📝 Simply provide a PDF or TXT file, and the app will generate a quiz to help you study and review the material. 💡
+The Multiple Choice Quiz Generator is a web application that automatically creates a multiple-choice quiz from your uploaded lecture notes. 📝 Simply provide a PDF or TXT file, and the app will generate a quiz to help you study and review the material. 💡
 
 ---
 
