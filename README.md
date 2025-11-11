@@ -1,91 +1,100 @@
-# 🧠 Multiple Choice Quiz Generator
+# Offline Quiz Manager
 
-The Multiple Choice Quiz Generator is a web application that automatically creates a multiple-choice quiz from your uploaded lecture notes. 📝 Simply provide a PDF or TXT file, and the app will generate a quiz to help you study and review the material. 💡
+This is a simple, self-contained, offline-first web application for creating, taking, and managing quizzes. It runs entirely in your browser and uses `localStorage` to save your progress, so no database or internet connection (after the first load) is required.
 
----
+This app was built to be a simple, portable tool for studying and self-testing.
 
 ## ✨ Features
 
-* **✍️ Generate Quizzes from Your Notes**: Upload your lecture notes in PDF or TXT format.
-* **🔢 Customizable Number of Questions**: Choose how many questions you want in your quiz, from 1 to 30.
-* **🖥️ Interactive Quiz Interface**: Take the quiz directly in your browser with instant feedback on your answers.
-* **📊 Score Tracking**: See your score at the end of the quiz to gauge your understanding.
-* **🔄 Regenerate Quizzes**: Get a new set of questions from the same document with a single click.
+  * **Runs 100% Offline:** After loading the page once, the app is fully functional offline.
+  * **Persistent State:** All active quizzes and progress are saved in your browser's `localStorage`.
+  * **Multiple Input Formats:** Load quizzes by pasting JSON, uploading a JSON file, or pasting a simple text format.
+  * **Quiz Management:** See all your active quizzes in one list.
+  * **Rename & Delete:** Easily rename quizzes for better organization or delete them when you're done.
+  * **Full Quiz Navigation:**
+      * Move between questions with "Next" and "Previous" buttons.
+      * "Skip" questions to come back to them later.
+      * Automatically loops through skipped questions at the end.
+  * **Question List (TOC):** Jump to any question from a color-coded table of contents modal.
+  * **Answer Review:** After completing a quiz, review all your answers against the correct ones.
 
----
+## 🚀 How to Use (on GitHub Pages)
 
-## ⚙️ How It Works
+1.  Click the **+ Load New Quiz** button.
+2.  Choose your input format: **JSON** or **Simple Text**.
+3.  Paste or upload your quiz data.
+4.  Click **Load and Start Quiz**.
+5.  Your quiz will begin and will now be saved to your "Active Quizzes" list.
 
-The application uses the Google Gemini API to read the text from your uploaded document and generate relevant multiple-choice questions. The backend is built with Flask, and the frontend is created with HTML, CSS, and JavaScript. 🚀
+### Quiz Formats
 
----
+You can provide quiz data in two ways:
 
-## 🏁 Getting Started
+#### 1\. JSON Format
 
-Follow these instructions to set up and run the project locally.
+Paste a JSON array of question objects. Each object must have:
 
-### ✅ Prerequisites
+  * `questionText` (string)
+  * `options` (array of strings)
+  * `correctAnswerIndex` (number, 0-based index)
 
-1.  Python 3.7+
-2.  A Google AI API Key. You can get one from [Google AI Studio](https://aistudio.google.com/app/apikey).
+**Example:**
 
-### 🛠️ Installation
+```json
+[
+  {
+    "questionText": "What is the capital of France?",
+    "options": ["Berlin", "Madrid", "Paris", "Rome"],
+    "correctAnswerIndex": 2
+  },
+  {
+    "questionText": "What is 2 + 2?",
+    "options": ["3", "4", "5", "6"],
+    "correctAnswerIndex": 1
+  }
+]
+```
 
-1.  **Clone the repository:**
+#### 2\. Simple Text Format
+
+Paste plain text following this format:
+
+  * The question is the first line.
+  * Each answer is on a new line.
+  * The correct answer is marked with an asterisk (`*`) at the beginning.
+  * Separate questions with a blank line.
+
+**Example:**
+
+```
+What is the capital of France?
+Berlin
+Madrid
+*Paris
+Rome
+
+What is 2 + 2?
+3
+*4
+5
+6
+```
+
+## 💻 How to Run Locally
+
+1.  Clone this repository:
     ```bash
-    git clone [https://github.com/your-username/Quiz-Generator.git](https://github.com/your-username/Quiz-Generator.git)
-    cd Quiz-Generator
+    git clone https://github.com/your-username/your-repo-name.git
     ```
-
-2.  **Create a virtual environment and activate it:**
+2.  Navigate to the directory:
     ```bash
-    python -m venv venv
-    source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+    cd your-repo-name
     ```
+3.  For the best experience (and to avoid browser security issues with `file://`):
+      * If you have **VS Code**, install the **Live Server** extension, right-click `index.html`, and choose "Open with Live Server".
+      * If you have Python, run `python3 -m http.server` (or `python -m SimpleHTTPServer` for Python 2) and open `http://localhost:8000` in your browser.
 
-3.  **Install the required dependencies:**
-    *(Note: A `requirements.txt` file is not provided, but you can create one with the following content)*
+<!-- end list -->
 
-    **`requirements.txt`:**
-    ```
-    Flask
-    PyPDF2
-    google-generativeai
-    python-dotenv
-    ```
-
-    **Install the packages:**
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-4.  **Set up your environment variables:**
-    Create a file named `.env` in the root of the project directory and add your Google API key:
-    ```
-    GOOGLE_API_KEY=your_google_api_key_here
-    ```
-    *This file is listed in the `.gitignore` and will not be committed to your repository.* 🤫
-
----
-
-## ▶️ Running the Application
-
-1.  **Start the Flask server:**
-    ```bash
-    flask run
-    ```
-
-2.  **Open your browser:**
-    Navigate to `http://127.0.0.1:5000` to start using the application. 🌐
-
----
-
-## 🕹️ How to Use
-
-1.  Click the "Choose File" button to select a `.pdf` or `.txt` file from your computer. 📁
-2.  Select the number of questions you want to generate.
-3.  Click the "Generate Quiz" button.
-4.  The application will process the file and display the first question.
-5.  After answering a question, click "Next Question" to proceed.
-6.  At the end of the quiz, your final score will be displayed. 🏆
-7.  You can then choose to "Regenerate Quiz" from the same file or "Try Another File".
+```
+```
