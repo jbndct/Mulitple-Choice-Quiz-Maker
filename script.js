@@ -148,31 +148,46 @@ document.addEventListener('DOMContentLoaded', () => {
             noQuizzesMessage.classList.add('hidden');
             appState.activeQuizzes.forEach(quiz => {
                 const quizItem = document.createElement('div');
-                quizItem.className = 'bg-gray-700 p-4 rounded-lg';
+                // --- UPDATED STYLES HERE ---
+                quizItem.className = 'bg-gray-800 p-4 rounded-lg shadow-lg ring-1 ring-gray-700/50';
                 
                 const totalQuestions = quiz.quizData.length;
                 const answeredCount = quiz.userAnswers.filter(a => a !== null).length;
                 const isFinished = answeredCount === totalQuestions;
                 const progress = isFinished ? totalQuestions : quiz.currentQuestionIndex;
 
+                // --- UPDATED INNER HTML WITH ICONS ---
                 quizItem.innerHTML = `
                     <div class="flex items-center justify-between mb-2">
                         <h3 class="font-semibold text-lg text-white" data-id="${quiz.id}" data-type="name">${quiz.name}</h3>
-                        <div class="hidden" data-id="${quiz.id}" data-type="edit-container">
-                            <input type="text" value="${quiz.name}" class="bg-gray-800 text-white p-1 rounded-md text-sm">
+                        <div class="hidden flex items-center" data-id="${quiz.id}" data-type="edit-container">
+                            <input type="text" value="${quiz.name}" class="bg-gray-700 text-white p-1 rounded-md text-sm">
                             <button data-id="${quiz.id}" class="save-name-btn text-sm text-green-400 hover:text-green-300 ml-2">Save</button>
                         </div>
-                        <button data-id="${quiz.id}" class="rename-btn text-sm text-blue-400 hover:text-blue-300">Rename</button>
+                        <button data-id="${quiz.id}" class="rename-btn text-sm text-blue-400 hover:text-blue-300 flex items-center space-x-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z" />
+                            </svg>
+                            <span>Rename</span>
+                        </button>
                     </div>
                     <p class="text-sm text-gray-400 mb-3">
                         ${isFinished ? 'Finished! (Click to review)' : `Progress: ${progress} / ${totalQuestions} questions`}
                         (Score: ${quiz.score})
                     </p>
                     <div class="flex space-x-2">
-                        <button data-id="${quiz.id}" class="continue-btn flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-sm font-medium">
-                            ${isFinished ? 'Review' : 'Continue'}
+                        <button data-id="${quiz.id}" class="continue-btn flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-sm font-medium flex items-center justify-center space-x-2">
+                            ${isFinished ? 
+                                '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg><span>Review</span>' : 
+                                '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg><span>Continue</span>'
+                            }
                         </button>
-                        <button data-id="${quiz.id}" class="delete-btn bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-md text-sm font-medium">Delete</button>
+                        <button data-id="${quiz.id}" class="delete-btn bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-md text-sm font-medium flex items-center justify-center space-x-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            <span>Delete</span>
+                        </button>
                     </div>
                 `;
                 activeQuizList.appendChild(quizItem);
@@ -181,7 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Add event listeners to the new buttons
             activeQuizList.querySelectorAll('.continue-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
-                    const quizId = e.target.dataset.id;
+                    const quizId = e.currentTarget.dataset.id;
                     const quiz = appState.activeQuizzes.find(q => q.id === quizId);
                     const answeredCount = quiz.userAnswers.filter(a => a !== null).length;
                     const isFinished = answeredCount === quiz.quizData.length;
@@ -196,23 +211,23 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             activeQuizList.querySelectorAll('.delete-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
-                    deleteQuiz(e.target.dataset.id);
+                    deleteQuiz(e.currentTarget.dataset.id);
                     renderQuizList(); // Re-render after deletion
                 });
             });
             activeQuizList.querySelectorAll('.rename-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
-                    const quizId = e.target.dataset.id;
-                    const item = e.target.closest('.bg-gray-700');
+                    const quizId = e.currentTarget.dataset.id;
+                    const item = e.currentTarget.closest('.bg-gray-800');
                     item.querySelector(`[data-type="name"]`).classList.add('hidden');
                     item.querySelector(`[data-type="edit-container"]`).classList.remove('hidden');
-                    e.target.classList.add('hidden');
+                    e.currentTarget.classList.add('hidden');
                 });
             });
             activeQuizList.querySelectorAll('.save-name-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
-                    const quizId = e.target.dataset.id;
-                    const item = e.target.closest('.bg-gray-700');
+                    const quizId = e.currentTarget.dataset.id;
+                    const item = e.currentTarget.closest('.bg-gray-800');
                     const input = item.querySelector('input[type="text"]');
                     renameQuiz(quizId, input.value);
                 });
@@ -252,6 +267,8 @@ document.addEventListener('DOMContentLoaded', () => {
             fileNameDisplay.textContent = file.name;
             jsonTextInput.value = '';
             simpleTextInput.value = '';
+        } else {
+            fileNameDisplay.textContent = 'No file chosen';
         }
     });
 
@@ -433,28 +450,25 @@ document.addEventListener('DOMContentLoaded', () => {
             const button = document.createElement('button');
             button.textContent = option;
             button.dataset.index = index;
-            button.className = "w-full text-left p-4 bg-gray-700 hover:bg-gray-600 rounded-md transition-all focus:outline-none focus:ring-2 focus:ring-blue-500";
+            button.className = "w-full text-left p-4 bg-gray-700 hover:bg-gray-600 rounded-md transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-md";
             button.addEventListener('click', handleOptionClick);
             optionsContainer.appendChild(button);
         });
         
-        // --- THIS IS THE UPDATED LOGIC ---
-        skipQuestionBtn.textContent = 'Skip'; // Always show "Skip"
+        skipQuestionBtn.textContent = 'Skip';
         
         const existingAnswer = quiz.userAnswers[quiz.currentQuestionIndex];
         if (existingAnswer !== null) {
             showFeedback(existingAnswer, false);
-            skipQuestionBtn.classList.add('hidden'); // HIDE if answered
+            skipQuestionBtn.disabled = true;
         } else {
             nextQuestionBtn.classList.add('hidden');
-            skipQuestionBtn.classList.remove('hidden'); // SHOW if not answered
-            skipQuestionBtn.disabled = false; 
+            skipQuestionBtn.disabled = false;
             Array.from(optionsContainer.children).forEach(btn => {
                 btn.disabled = false;
                 btn.classList.remove('opacity-70');
             });
         }
-        // --- END OF UPDATED LOGIC ---
         
         prevQuestionBtn.disabled = quiz.currentQuestionIndex === 0;
     }
@@ -501,17 +515,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (selectedIndex === correctIndex) {
             feedbackMessage.textContent = 'Correct!';
             feedbackMessage.className = 'text-center text-lg font-semibold min-h-[30px] mb-4 text-green-400';
-            optionsContainer.querySelector(`[data-index="${selectedIndex}"]`).classList.add('!bg-green-600', 'text-white');
+            optionsContainer.querySelector(`[data-index="${selectedIndex}"]`).classList.add('!bg-green-600', 'text-white', 'ring-2', 'ring-green-400');
             if (withAnimation) quizContainer.classList.add('pop');
         } else {
             feedbackMessage.textContent = `Wrong! The correct answer was: ${question.options[correctIndex]}`;
             feedbackMessage.className = 'text-center text-lg font-semibold min-h-[30px] mb-4 text-red-400';
-            optionsContainer.querySelector(`[data-index="${selectedIndex}"]`).classList.add('!bg-red-600', 'text-white');
+            optionsContainer.querySelector(`[data-index="${selectedIndex}"]`).classList.add('!bg-red-600', 'text-white', 'ring-2', 'ring-red-400');
             optionsContainer.querySelector(`[data-index="${correctIndex}"]`).classList.add('!bg-green-600', 'text-white');
             if (withAnimation) quizContainer.classList.add('shake');
         }
         
-        skipQuestionBtn.classList.add('hidden'); 
+        skipQuestionBtn.disabled = true;
         nextQuestionBtn.classList.remove('hidden');
     }
     
@@ -519,29 +533,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const quiz = appState.activeQuizzes.find(q => q.id === currentQuizId);
 
         if (quiz.reviewingSkipped) {
-            // Find the *next* null answer *after* the current one
             let nextSkippedIndex = quiz.userAnswers.indexOf(null, quiz.currentQuestionIndex + 1);
             
             if (nextSkippedIndex === -1) {
-                // Didn't find one after. Check *before* (loop around).
                 nextSkippedIndex = quiz.userAnswers.indexOf(null);
             }
 
             if (nextSkippedIndex !== -1 && nextSkippedIndex !== quiz.currentQuestionIndex) {
                 quiz.currentQuestionIndex = nextSkippedIndex;
             } else {
-                // All skips are done! (or we are on the last skipped question)
-                // Double check if any *other* nulls exist
                 const allSkipped = quiz.userAnswers.filter(a => a === null).length;
                 if (allSkipped === 0) {
                     updateQuizProgress();
                     showResults();
                     return;
                 } else {
-                    // This can happen if you skip the *last* skipped question.
-                    // Just stay on the current question. We'll find it again.
-                    // To prevent an infinite loop, check if we're done.
-                    quiz.currentQuestionIndex = nextSkippedIndex; // Go to the one we found
+                    quiz.currentQuestionIndex = nextSkippedIndex;
                 }
             }
         } else {
@@ -575,14 +582,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // --- THIS IS THE UPDATED LISTENER ---
     skipQuestionBtn.addEventListener('click', () => {
-        // Since the button is disabled when an answer is selected,
-        // we don't need to check for an existing answer or update the score.
-        // We just move to the next question, leaving the current one as 'null'.
         goToNextQuestion();
     });
-    // --- END OF UPDATED LISTENER ---
 
     // --- SCREEN 4: RESULTS LOGIC ---
     
@@ -632,26 +634,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 let indicator = '';
 
                 if (optIndex === correctIndex) {
-                    optionClass = 'bg-green-800 border-green-500';
-                    indicator = '<span class="text-green-400 ml-2">(Correct)</span>';
+                    optionClass = 'bg-green-800/50 border-green-500';
+                    indicator = '<span class="text-green-400 ml-2 font-medium">(Correct)</span>';
                 }
                 
                 if (optIndex === userAnswerIndex && userAnswerIndex !== correctIndex) {
-                    optionClass = 'bg-red-800 border-red-500';
-                    indicator = '<span class="text-red-400 ml-2">(Your Answer)</span>';
+                    optionClass = 'bg-red-800/50 border-red-500';
+                    indicator = '<span class="text-red-400 ml-2 font-medium">(Your Answer)</span>';
                 } else if (optIndex === userAnswerIndex && userAnswerIndex === correctIndex) {
-                    indicator = '<span class="text-green-400 ml-2">(Your Answer)</span>';
+                    indicator = '<span class="text-green-400 ml-2 font-medium">(Your Answer)</span>';
                 }
                 
                 optionsHTML += `<li class="${optionClass} p-3 rounded-md border-l-4">${option}${indicator}</li>`;
             });
             
             if (userAnswerIndex === null) {
-                 optionsHTML += `<li class="bg-yellow-800 border-l-4 border-yellow-500 text-yellow-300 p-3 rounded-md">You skipped this question.</li>`;
+                 optionsHTML += `<li class="bg-yellow-800/50 border-l-4 border-yellow-500 text-yellow-300 p-3 rounded-md font-medium">You skipped this question.</li>`;
             }
 
             const reviewItem = document.createElement('div');
-            reviewItem.className = 'bg-gray-900 p-4 rounded-lg';
+            reviewItem.className = 'bg-gray-800 p-4 rounded-lg shadow-lg ring-1 ring-gray-700/50';
             reviewItem.innerHTML = `
                 <h3 class="font-semibold text-lg text-white mb-3">
                     ${index + 1}. ${question.questionText}
@@ -676,7 +678,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const button = document.createElement('button');
             button.textContent = index + 1;
             button.dataset.index = index;
-            button.className = 'toc-btn';
+            // --- UPDATED STYLES HERE ---
+            button.className = 'h-10 w-10 flex items-center justify-center font-bold rounded-full transition-all';
 
             // Apply status styles
             const userAnswer = quiz.userAnswers[index];
@@ -694,7 +697,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 button.classList.add('bg-yellow-600', 'text-white');
             } else {
                 // Not Visited
-                button.classList.add('bg-gray-600', 'text-gray-200');
+                button.s.classList.add('bg-gray-600', 'text-gray-200');
             }
             
             // Highlight current question

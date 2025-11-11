@@ -1,293 +1,304 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Offline Quiz Manager</title>
-    
-    <!-- Tailwind CSS from CDN -->
+    <!-- Load Tailwind CSS from CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Our new, separate CSS file -->
+    <!-- Load custom styles -->
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="bg-gray-900 text-gray-100 flex items-center justify-center min-h-full p-4 sm:p-8 font-sans">
+<body class="bg-gradient-to-br from-gray-900 to-gray-800 text-gray-200 font-sans p-4 md:p-8 min-h-screen">
 
-    <div class="w-full max-w-2xl">
+    <div class="max-w-5xl mx-auto">
 
-        <!-- =================================== -->
-        <!--  1. QUIZ LIST CONTAINER (HOME)      -->
-        <!-- =================================== -->
-        <div id="quiz-list-container" class="bg-gray-800 p-6 sm:p-8 rounded-xl shadow-2xl transition-all">
-            <h1 class="text-3xl font-bold text-center text-white mb-6">Your Active Quizzes</h1>
+        <!-- ===== 1. QUIZ LIST (HOME SCREEN) ===== -->
+        <div id="quiz-list-container">
+            <header class="flex items-center justify-between mb-6">
+                <h1 class="text-3xl font-bold text-white tracking-tight">Your Quizzes</h1>
+                <button id="load-new-quiz-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium flex items-center space-x-2 shadow-lg hover:shadow-blue-500/30 transition-shadow">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                    </svg>
+                    <span>Load New Quiz</span>
+                </button>
+            </header>
             
-            <div id="active-quiz-list" class="mb-6 max-h-[40vh] overflow-y-auto space-y-4 pr-2">
-                <!-- Active quizzes will be injected here by JS -->
+            <div id="no-quizzes-message" class="text-center text-gray-400 bg-gray-800 shadow-lg ring-1 ring-gray-700/50 p-8 rounded-lg hidden">
+                <p>You have no active quizzes.</p>
+                <p>Click "Load New Quiz" to get started!</p>
             </div>
-            
-            <p id="no-quizzes-message" class="text-gray-400 text-center italic hidden">
-                You have no active quizzes.
-            </p>
-            
-            <button id="load-new-quiz-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-md text-lg transition-all">
-                + Load New Quiz
-            </button>
+
+            <div id="active-quiz-list" class="space-y-4">
+                <!-- Quiz items will be injected here by script.js -->
+            </div>
         </div>
 
-        <!-- =================================== -->
-        <!--  2. SETUP CONTAINER                 -->
-        <!-- =================================== -->
-        <div id="setup-container" class="bg-gray-800 p-6 sm:p-8 rounded-xl shadow-2xl transition-all hidden">
-            <div class="flex justify-between items-center mb-4">
-                <h1 class="text-3xl font-bold text-white">Load New Quiz</h1>
-                <button id="back-to-list-btn" class="text-sm text-blue-400 hover:text-blue-300">&larr; Back to List</button>
-            </div>
-            
-            <!-- Tab Buttons -->
-            <div class="flex mb-4 border-b border-gray-700">
-                <button id="tab-btn-json" class="tab-btn flex-1 py-2 font-medium text-white border-b-2 border-blue-500">
-                    From JSON
+        <!-- ===== 2. SETUP/LOAD QUIZ SCREEN ===== -->
+        <div id="setup-container" class="hidden">
+            <header class="flex items-center justify-between mb-6">
+                <h1 class="text-3xl font-bold text-white tracking-tight">Load a New Quiz</h1>
+                <button id="back-to-list-btn" class="text-sm text-blue-400 hover:text-blue-300 flex items-center space-x-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+                    </svg>
+                    <span>Back to List</span>
                 </button>
-                <button id="tab-btn-text" class="tab-btn flex-1 py-2 font-medium text-gray-400 border-b-2 border-transparent hover:text-gray-200">
-                    From Simple Text
-                </button>
-            </div>
+            </header>
 
-            <!-- Tab Content: JSON -->
-            <div id="tab-content-json">
-                <p class="text-gray-400 text-center mb-4">
-                    Provide your quiz data in JSON format below.
-                </p>
-                <!-- Instructions for JSON Format -->
-                <div class="mb-6 bg-gray-900 p-4 rounded-lg space-y-4">
-                    <div>
-                        <h2 class="font-semibold text-lg text-blue-400 mb-2">JSON Format Instructions (AI-Friendly)</h2>
-                        <p class="text-sm text-gray-400">
-                            To generate a quiz, provide a JSON array (`[]`) of question objects (`{}`).
-                        </p>
+            <div class="bg-gray-800 p-6 rounded-lg shadow-2xl ring-1 ring-gray-700/50">
+                <!-- Tab Headers -->
+                <div class="border-b border-gray-700 mb-4">
+                    <nav class="-mb-px flex space-x-6">
+                        <button id="tab-btn-json" class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm text-white border-blue-500">
+                            Load from JSON
+                        </button>
+                        <button id="tab-btn-text" class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm text-gray-400 border-transparent hover:text-gray-200">
+                            Load from Simple Text
+                        </button>
+                    </nav>
+                </div>
+                
+                <!-- Tab Content: JSON -->
+                <div id="tab-content-json">
+                    <p class="text-sm text-gray-400 mb-3">Paste your quiz JSON below:</p>
+                    <textarea id="json-text-input" rows="8" class="w-full p-2 bg-gray-900 text-gray-200 rounded-md border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="[ { &quot;questionText&quot;: &quot;...&quot;, ... } ]"></textarea>
+
+                    <div class="flex items-center space-x-4 my-4">
+                        <p class="text-gray-400">OR Upload a .json file</p>
+                        <label for="file-input" class="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                            </svg>
+                            <span>Choose File</span>
+                        </label>
+                        <span id="file-name" class="text-sm text-gray-400">No file chosen</span>
+                        <input type="file" id="file-input" accept=".json,.txt" class="hidden">
                     </div>
+
+                    <details class="bg-gray-900 p-3 rounded-md mt-4 text-sm">
+                        <summary class="cursor-pointer text-gray-400">Instructions for JSON Format</summary>
+                        <div class="mt-2 text-gray-300 space-y-2">
+                            <p>The file must be a JSON array `[...]` of question objects `{...}`.</p>
+                            <p>Each object needs:</p>
+                            <ul class="list-disc list-inside ml-4">
+                                <li>`"questionText"`: (string) The question.</li>
+                                <li>`"options"`: (array of strings) The choices.</li>
+                                <li>`"correctAnswerIndex"`: (number) The 0-based index of the correct option.</li>
+                            </ul>
+                            <p class="font-semibold mt-2">Prompt for AI Generation:</p>
+                            <!-- ===== THIS IS THE FIX for the overflow ===== -->
+                            <pre class="bg-gray-700 p-2 rounded-md text-xs whitespace-pre-wrap">Generate a quiz as a JSON array. Each object in the array must have three keys: "questionText" (string), "options" (an array of 4 strings), and "correctAnswerIndex" (a number from 0 to 3).</pre>
+                        </div>
+                    </details>
+                </div>
+
+                <!-- Tab Content: Simple Text -->
+                <div id="tab-content-text" class="hidden">
+                    <p class="text-sm text-gray-400 mb-3">Paste your simple text quiz below:</p>
+                    <textarea id="simple-text-input" rows="8" class="w-full p-2 bg-gray-900 text-gray-200 rounded-md border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="What is 2+2?&#10;3&#10;*4&#10;5&#10;&#10;What is the capital of France?&#10;*Paris&#10;Berlin&#10;Rome"></textarea>
                     
-                    <!-- AI-specific prompt -->
-                    <div class="bg-gray-950 p-3 rounded-md">
-                        <label class="block text-sm font-medium text-yellow-300 mb-2">Prompt for AI Generation:</label>
-                        <p class="text-xs text-gray-300 font-mono">
-                            "Generate a JSON array of quiz questions. Each object in the array must have exactly these 3 keys:
-                            1.  `"questionText"`: A `string` containing the question.
-                            2.  `"options"`: An `array` of 4 `string`s with possible answers.
-                            3.  `"correctAnswerIndex"`: A `number` (integer) representing the 0-based index (0, 1, 2, or 3) of the correct answer in the 'options' array."
-                        </p>
-                    </div>
-                    
-                    <!-- Schema/Example block -->
-                    <div class="bg-gray-950 p-3 rounded-md">
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Example Structure:</label>
-                        <pre class="text-xs text-gray-300 overflow-x-auto">
-[
-  {
-    "questionText": "What is 2+2?",
-    "options": ["3", "4", "5", "6"],
-    "correctAnswerIndex": 1
-  }
-]</pre>
-                    </div>
-                </div>
-
-                <!-- Option 1: Paste JSON -->
-                <div class="mb-4">
-                    <label for="json-text-input" class="block text-sm font-medium text-gray-300 mb-2">
-                        Paste your JSON data here:
-                    </label>
-                    <textarea id="json-text-input" rows="8" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
-                </div>
-
-                <!-- Option 2: Upload File -->
-                <div class="flex items-center justify-center space-x-4 mb-6">
-                    <span class="text-gray-400">OR</span>
-                    <label for="file-input" class="file-input-btn">
-                        Upload a .json file
-                    </label>
-                    <input type="file" id="file-input" accept=".json, .txt">
-                    <span id="file-name" class="text-gray-400 italic">No file chosen</span>
-                </div>
-            </div>
-
-            <!-- Tab Content: Simple Text -->
-            <div id="tab-content-text" class="hidden">
-                 <p class="text-gray-400 text-center mb-4">
-                    Paste your quiz in a simple text format.
-                </p>
-                <!-- Instructions for Simple Text Format -->
-                <div class="mb-6 bg-gray-900 p-4 rounded-lg space-y-4">
-                    <h2 class="font-semibold text-lg text-blue-400 mb-2">Simple Text Format</h2>
-                    <p class="text-sm text-gray-400">
-                        - Write the question on the first line.<br>
-                        - Write each answer on a new line.<br>
-                        - Mark the correct answer with an asterisk `*` at the beginning.<br>
-                        - Separate each question block with a blank line.
-                    </p>
-                    <div class="bg-gray-950 p-3 rounded-md">
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Example:</label>
-                        <pre class="text-xs text-gray-300 overflow-x-auto">
-What is the capital of France?
-*Paris
+                    <details class="bg-gray-900 p-3 rounded-md mt-4 text-sm">
+                        <summary class="cursor-pointer text-gray-400">Instructions for Simple Text Format</summary>
+                        <div class="mt-2 text-gray-300 space-y-2">
+                            <ul class="list-disc list-inside ml-4">
+                                <li>The first line is the question.</li>
+                                <li>Each following line is an answer option.</li>
+                                <li>Mark the correct answer by putting an asterisk `*` at the very beginning.</li>
+                                <li>Separate each question with a blank line.</li>
+                            </ul>
+                            <pre class="bg-gray-700 p-2 rounded-md text-xs whitespace-pre-wrap">What is the capital of France?
 Berlin
 Madrid
+*Paris
 Rome
 
 What is 2 + 2?
 3
 *4
 5
-6
-</pre>
-                    </div>
+6</pre>
+                        </div>
+                    </details>
                 </div>
-                <!-- Option: Paste Simple Text -->
-                <div class="mb-4">
-                    <label for="simple-text-input" class="block text-sm font-medium text-gray-300 mb-2">
-                        Paste your simple text data here:
-                    </label>
-                    <textarea id="simple-text-input" rows="8" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-md text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+
+                <!-- Load Button and Error Message -->
+                <div class="mt-6">
+                    <button id="load-quiz-btn" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-md font-medium text-lg shadow-lg hover:shadow-green-500/30 transition-shadow">Load and Start Quiz</button>
+                    <p id="setup-error" class="text-red-400 text-sm text-center mt-3 hidden"></p>
                 </div>
             </div>
-
-            <!-- Shared Load Button -->
-            <button id="load-quiz-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-md text-lg transition-all">
-                Load and Start Quiz
-            </button>
-            <p id="setup-error" class="text-red-400 text-center mt-4 hidden"></p>
         </div>
-
-        <!-- =================================== -->
-        <!--  3. QUIZ CONTAINER                  -->
-        <!-- =================================== -->
-        <div id="quiz-container" class="bg-gray-800 rounded-xl shadow-2xl transition-all hidden overflow-hidden">
-            <!-- Progress Bar -->
-            <div class="w-full bg-gray-700 h-2">
-                <div id="progress-bar" class="bg-blue-500 h-2 transition-all duration-300" style="width: 0%"></div>
-            </div>
-            
-            <div class="p-6 sm:p-8">
-                <!-- Skipped Mode Banner -->
-                <div id="skipped-mode-banner" class="hidden p-3 mb-4 bg-yellow-900 border border-yellow-700 text-yellow-300 text-sm font-medium text-center rounded-md">
-                    You are now answering your skipped questions.
-                </div>
-
-                <!-- Quiz Header -->
-                <div class="flex justify-between items-center mb-6">
-                    <div class="flex items-center space-x-3">
-                        <h2 id="quiz-title" class="text-2xl font-bold text-blue-400 truncate w-40 sm:w-auto" title="Quiz Title">Quiz in Progress</h2>
-                        <button id="show-toc-btn" class="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded-md">
-                            Question List
+        
+        <!-- ===== 3. QUIZ SCREEN ===== -->
+        <div id="quiz-container" class="hidden">
+            <!-- Header Bar -->
+            <div class="bg-gray-800 shadow-lg ring-1 ring-gray-700/50 p-4 rounded-lg mb-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 id="quiz-title" class="text-xl font-semibold text-white truncate" title="Quiz Name">...</h2>
+                    <div class="flex items-center space-x-4">
+                        <button id="show-toc-btn" class="text-sm text-blue-400 hover:text-blue-300 flex items-center space-x-1.5">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                            </svg>
+                            <span>Question List</span>
+                        </button>
+                        <button id="quiz-back-to-list-btn" class="text-sm text-gray-400 hover:text-gray-300 flex items-center space-x-1.5">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                            </svg>
+                            <span>Save & Exit</span>
                         </button>
                     </div>
-                    <button id="quiz-back-to-list-btn" class="text-sm text-blue-400 hover:text-blue-300 flex-shrink-0">&larr; Back to List</button>
                 </div>
-                <div class="flex justify-between items-center mb-6">
-                    <div class="text-lg">
-                        <span id="question-counter" class="font-semibold"></span>
-                        <span class="text-gray-400">/</span>
-                        <span id="total-questions" class="text-gray-400"></span>
+                <!-- Progress and Score -->
+                <div class="flex items-center justify-between text-sm text-gray-300">
+                    <div>
+                        Question: 
+                        <span id="question-counter" class="font-bold">1</span> / 
+                        <span id="total-questions">10</span>
                     </div>
-                    <div class="text-lg text-green-400">
-                        <span class="text-gray-400">Score:</span>
-                        <span id="current-score" class="font-semibold">0</span>
+                    <div>
+                        Score: <span id="current-score" class="font-bold">0</span>
                     </div>
                 </div>
+                <!-- Progress Bar -->
+                <div class="w-full bg-gray-700 rounded-full h-1.5 mt-2">
+                    <div id="progress-bar" class="bg-blue-500 h-1.5 rounded-full transition-all" style="width: 10%"></div>
+                </div>
+            </div>
 
-                <!-- Question -->
-                <div id="question-text" class="text-xl sm:text-2xl font-medium text-white mb-8 min-h-[60px]">
-                    <!-- Question text will be injected here -->
+            <!-- Skipped Mode Banner -->
+            <div id="skipped-mode-banner" class="hidden bg-yellow-800 text-yellow-200 p-3 rounded-md text-center text-sm mb-4 ring-1 ring-yellow-600">
+                You are answering skipped questions.
+            </div>
+
+            <!-- Question Area -->
+            <div class="bg-gray-800 p-4 md:p-6 rounded-lg shadow-2xl ring-1 ring-gray-700/50">
+                <h3 id="question-text" class="text-xl md:text-2xl font-semibold text-white mb-6 min-h-[60px]">
+                    ...
+                </h3>
+                
+                <div id="options-container" class="space-y-3">
+                    <!-- Option buttons injected here -->
                 </div>
 
-                <!-- Options -->
-                <div id="options-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                    <!-- Option buttons will be injected here -->
-                </div>
-
-                <!-- Feedback -->
-                <div id="feedback-message" class="text-center text-lg font-semibold min-h-[30px] mb-4">
+                <div id="feedback-message" class="text-center text-lg font-semibold min-h-[30px] my-4">
                     <!-- "Correct!" or "Wrong!" -->
                 </div>
 
                 <!-- Navigation -->
-                <div id="navigation-container" class="flex justify-between items-center mt-6">
-                    <button id="prev-question-btn" class="nav-btn w-1/3 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-md transition-all">
-                        &larr; Previous
+                <div class="flex justify-between items-center mt-6 pt-4 border-t border-gray-700">
+                    <button id="prev-question-btn" class="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-md font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                        </svg>
+                        <span>Previous</span>
                     </button>
-                    
-                    <button id="skip-question-btn" class="nav-btn w-1/3 bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-4 rounded-md transition-all">
-                        Skip
-                    </button>
-                    
-                    <button id="next-question-btn" class="nav-btn hidden w-1/3 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md transition-all">
-                        Next &rarr;
-                    </button>
+                    <div class="space-x-2 flex">
+                        <button id="skip-question-btn" class="bg-yellow-600 hover:bg-yellow-500 text-white px-4 py-2 rounded-md font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2">
+                            <span>Skip</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                        <button id="next-question-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium hidden flex items-center space-x-2">
+                            <span>Next</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- =================================== -->
-        <!--  4. RESULTS CONTAINER               -->
-        <!-- =================================== -->
-        <div id="results-container" class="bg-gray-800 p-6 sm:p-8 rounded-xl shadow-2xl transition-all text-center hidden">
-            <h2 class="text-3xl font-bold text-white mb-4">Quiz Complete!</h2>
-            <p class="text-xl text-gray-300 mb-6">Your final score is:</p>
-            
-            <div id="score-text" class="text-6xl font-extrabold text-green-400 mb-8">
-                <!-- Score will be injected here -->
-            </div>
+        <!-- ===== 4. RESULTS SCREEN ===== -->
+        <div id="results-container" class="hidden">
+            <div class="bg-gray-800 p-8 rounded-lg text-center shadow-2xl ring-1 ring-gray-700/50">
+                <h2 class="text-3xl font-bold text-white mb-4 tracking-tight">Quiz Complete!</h2>
+                <p class="text-lg text-gray-300 mb-6">Your final score is:</p>
+                
+                <div id="score-text" class="text-6xl font-extrabold text-green-400 mb-8">
+                    8 / 10
+                </div>
 
-            <button id="review-answers-btn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-md text-lg transition-all mb-4">
-                Review Answers
-            </button>
-            <button id="results-back-to-list-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md text-lg transition-all">
-                Back to Quiz List
-            </button>
-        </div>
-
-        <!-- =================================== -->
-        <!--  5. REVIEW CONTAINER                -->
-        <!-- =================================== -->
-        <div id="review-container" class="bg-gray-800 p-6 sm:p-8 rounded-xl shadow-2xl transition-all hidden">
-            <div class="flex justify-between items-center mb-6">
-                <h1 class="text-3xl font-bold text-white">Review Answers</h1>
-                <button id="review-back-to-results-btn" class="text-sm text-blue-400 hover:text-blue-300">&larr; Back to Results</button>
-            </div>
-            
-            <div id="review-list" class="max-h-[70vh] overflow-y-auto space-y-6 pr-2">
-                <!-- Review content will be injected here -->
+                <div class="flex flex-col md:flex-row gap-4">
+                    <button id="review-answers-btn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md font-medium flex items-center justify-center space-x-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        <span>Review Answers</span>
+                    </button>
+                    <button id="results-back-to-list-btn" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white px-6 py-3 rounded-md font-medium flex items-center justify-center space-x-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Finish & Back to List</span>
+                    </button>
+                </div>
             </div>
         </div>
+        
+        <!-- ===== 5. REVIEW SCREEN ===== -->
+        <div id="review-container" class="hidden">
+            <header class="flex items-center justify-between mb-6">
+                <h1 class="text-3xl font-bold text-white tracking-tight">Reviewing Answers</h1>
+                <button id="review-back-to-results-btn" class="text-sm text-blue-400 hover:text-blue-300 flex items-center space-x-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+                    </svg>
+                    <span>Back to Results</span>
+                </button>
+            </header>
+            
+            <div id="review-list" class="space-y-4">
+                <!-- Review items injected here -->
+            </div>
+        </div>
+
     </div>
 
-    <!-- =================================== -->
-    <!--  TOC MODAL                          -->
-    <!-- =================================== -->
-    <div id="toc-modal-container" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-        <div class="bg-gray-800 w-full max-w-2xl max-h-[90vh] rounded-xl shadow-2xl p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-2xl font-bold text-white">Question List</h2>
-                <button id="close-toc-btn" class="text-2xl text-gray-400 hover:text-white">&times;</button>
-            </div>
-            
+    <!-- ===== TABLE OF CONTENTS MODAL ===== -->
+    <div id="toc-modal-container" class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-gray-800 w-full max-w-2xl rounded-lg shadow-2xl ring-1 ring-gray-700 p-6 relative max-h-[90vh] flex flex-col">
+            <h2 class="text-2xl font-bold text-white mb-4">Question List</h2>
+            <button id="close-toc-btn" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+
             <!-- Legend -->
-            <div class="flex flex-wrap gap-x-4 gap-y-2 text-xs text-gray-300 mb-4 p-3 bg-gray-900 rounded-md">
-                <div class="flex items-center"><span class="w-3 h-3 bg-green-600 rounded-full mr-1.5"></span>Correct</div>
-                <div class="flex items-center"><span class="w-3 h-3 bg-red-600 rounded-full mr-1.5"></span>Wrong</div>
-                <div class="flex items-center"><span class="w-3 h-3 bg-yellow-600 rounded-full mr-1.5"></span>Skipped</div>
-                <div class="flex items-center"><span class="w-3 h-3 bg-gray-600 rounded-full mr-1.5"></span>Not Visited</div>
-                <div class="flex items-center"><span class="w-3 h-3 border-2 border-blue-400 rounded-full mr-1.5"></span>Current</div>
+            <div class="flex flex-wrap gap-x-4 gap-y-2 text-xs text-gray-300 mb-4 border-b border-gray-700 pb-3">
+                <div class="flex items-center space-x-1.5">
+                    <div class="w-4 h-4 rounded-full bg-green-600"></div><span>Correct</span>
+                </div>
+                <div class="flex items-center space-x-1.5">
+                    <div class="w-4 h-4 rounded-full bg-red-600"></div><span>Wrong</span>
+                </div>
+                <div class="flex items-center space-x-1.5">
+                    <div class="w-4 h-4 rounded-full bg-yellow-600"></div><span>Skipped</span>
+                </div>
+                <div class="flex items-center space-x-1.5">
+                    <div class="w-4 h-4 rounded-full bg-gray-600"></div><span>Unvisited</span>
+                </div>
+                <div class="flex items-center space-x-1.5">
+                    <div class="w-4 h-4 rounded-full ring-2 ring-blue-400"></div><span>Current</span>
+                </div>
             </div>
-
-            <!-- Grid -->
-            <div id="toc-grid" class="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-3 overflow-y-auto max-h-[60vh] p-2">
-                <!-- TOC buttons will be injected here -->
+            
+            <div class="overflow-y-auto">
+                <div id="toc-grid" class="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2">
+                    <!-- TOC buttons injected here -->
+                </div>
             </div>
         </div>
     </div>
-
-    <!-- Our new, separate JS file -->
+    
+    <!-- Load custom script -->
     <script src="script.js"></script>
 </body>
 </html>
