@@ -448,7 +448,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         question.options.forEach((option, index) => {
             const button = document.createElement('button');
-            button.textContent = option;
+            // Add number prefix to option text for clarity with keyboard shortcuts
+            button.textContent = `${index + 1}. ${option}`;
             button.dataset.index = index;
             button.className = "w-full text-left p-4 bg-gray-700 hover:bg-gray-600 rounded-md transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-md";
             button.addEventListener('click', handleOptionClick);
@@ -479,7 +480,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const question = quizData[currentQuestionIndex];
         const correctIndex = question.correctAnswerIndex;
         
-        const selectedButton = e.target;
+        const selectedButton = e.currentTarget; // Use currentTarget
         const selectedIndex = parseInt(selectedButton.dataset.index);
 
         const oldAnswerIndex = quiz.userAnswers[currentQuestionIndex];
@@ -697,7 +698,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 button.classList.add('bg-yellow-600', 'text-white');
             } else {
                 // Not Visited
-                button.s.classList.add('bg-gray-600', 'text-gray-200');
+                button.classList.add('bg-gray-600', 'text-gray-200');
             }
             
             // Highlight current question
@@ -752,6 +753,78 @@ document.addEventListener('DOMContentLoaded', () => {
     tocModalContainer.addEventListener('click', (e) => {
         if (e.target === tocModalContainer) {
             hideTocModal();
+        }
+    });
+
+    // --- KEYBOARD SHORTCUTS ---
+    document.addEventListener('keydown', (e) => {
+        // Check if user is typing in an input (e.g., in the setup screen or renaming a quiz)
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+            // Allow Enter to save on list screen rename
+            if (e.key === 'Enter' && !screenContainers.list.classList.contains('hidden') && e.target.closest('[data-type="edit-container"]')) {
+                e.preventDefault();
+                const editContainer = e.target.closest('[data-type="edit-container"]');
+                const saveBtn = editContainer.querySelector('.save-name-btn');
+                if (saveBtn) {
+                    saveBtn.click();
+                }
+            }
+            return; // Don't process other shortcuts if typing
+        }
+
+        // Check if TOC modal is open
+        if (!tocModalContainer.classList.contains('hidden')) {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                hideTocModal();
+            }
+            return; // Don't process other keys if modal is open
+        }
+
+        // Check if quiz screen is active
+        if (!screenContainers.quiz.classList.contains('hidden')) {
+            switch (e.key) {
+                case 'Enter':
+                    // Find the visible "next" or "skip" button and click it
+                    if (!nextQuestionBtn.classList.contains('hidden') && !nextQuestionBtn.disabled) {
+                        e.preventDefault();
+                        goToNextQuestion();
+                    } else if (!skipQuestionBtn.classList.contains('hidden') && !skipQuestionBtn.disabled) {
+                        e.preventDefault();
+                        goToNextQuestion(); // Skip button also calls goToNextQuestion
+                    }
+                    break;
+                
+                case 'Backspace':
+                    // Click the "previous" button if it's not disabled
+                    if (!prevQuestionBtn.disabled) {
+                        e.preventDefault();
+                        prevQuestionBtn.click();
+                    }
+                    break;
+                
+                case '1':
+                case '2':
+                case '3':
+                case '4':
+                case '5':
+                case '6':
+                case '7':
+                case '8':
+                case '9':
+                    // Find the corresponding option button
+                    const optionIndex = parseInt(e.key) - 1;
+                    const optionButtons = optionsContainer.querySelectorAll('button');
+                    
+                    if (optionButtons.length > optionIndex && optionIndex >= 0) {
+                        const targetButton = optionButtons[optionIndex];
+                        if (targetButton && !targetButton.disabled) {
+                            e.preventDefault();
+                            targetButton.click(); // Programmatically click the button
+                        }
+                    }
+                    break;
+            }
         }
     });
 
