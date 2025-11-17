@@ -1,42 +1,73 @@
-# Offline Quiz Manager
+# Quiz Manager
 
-This is a simple, self-contained, offline-first web application for creating, taking, and managing quizzes. It runs entirely in your browser and uses `localStorage` to save your progress, so no database or internet connection (after the first load) is required.
-
-This app was built to be a simple, portable tool for studying and self-testing.
+A web application for creating, taking, and managing quizzes. It features a hybrid storage model, allowing users to save quizzes privately in your browser's localStorage or share them in a public library powered by Firebase.
 
 ## ✨ Features
 
-  * **Runs 100% Offline:** After loading the page once, the app is fully functional offline.
-  * **Persistent State:** All active quizzes and progress are saved in your browser's `localStorage`.
-  * **Multiple Input Formats:** Load quizzes by pasting JSON, uploading a JSON file, or pasting a simple text format.
-  * **Quiz Management:** See all your active quizzes in one list.
-  * **Rename & Delete:** Easily rename quizzes for better organization or delete them when you're done.
-  * **Full Quiz Navigation:**
-      * Move between questions with "Next" and "Previous" buttons.
-      * "Skip" questions to come back to them later.
-      * Automatically loops through skipped questions at the end.
-  * **Question List (TOC):** Jump to any question from a color-coded table of contents modal.
-  * **Answer Review:** After completing a quiz, review all your answers against the correct ones.
+### Hybrid Storage Model
 
-## 🚀 How to Use (on GitHub Pages)
+**Local Quizzes:** Create and store quizzes that are saved only in your browser's local storage. These are fully private to you and appear under *My Local Quizzes*.
 
-1.  Click the **+ Load New Quiz** button.
-2.  Choose your input format: **JSON** or **Simple Text**.
-3.  Paste or upload your quiz data.
-4.  Click **Load and Start Quiz**.
-5.  Your quiz will begin and will now be saved to your "Active Quizzes" list.
+**Public Quiz Library:** Access a shared library of quizzes stored in a public Firebase database.
 
-### Quiz Formats
+**Persistent Progress:** Your progress (current question, score, and answers) is automatically saved locally for both local and public quizzes, letting you stop and resume anytime.
 
-You can provide quiz data in two ways:
+### Flexible Quiz Creation
 
-#### 1\. JSON Format
+* **Name Your Quiz:** Assign a custom name when creating a quiz.
+* **Multiple Input Formats:** Load quizzes via pasted JSON, uploaded `.json` files, or simple text format.
+* **Choose Your Audience:** Decide whether to save a quiz privately or publish it to the public quiz library.
 
-Paste a JSON array of question objects. Each object must have:
+### Full-Featured Quiz Experience
 
-  * `questionText` (string)
-  * `options` (array of strings)
-  * `correctAnswerIndex` (number, 0-based index)
+* **Full Navigation:** Move between questions with Next/Previous.
+* **Skip Questions:** Skip questions and revisit them automatically at the end.
+* **Question List (TOC):** A modal shows a color-coded grid of all questions for quick navigation.
+* **Instant Feedback:** See correctness of answers immediately.
+* **Answer Review:** After finishing, review all questions, your answers, and correct answers.
+
+### Quiz Management
+
+* **Extract Data:** Export any quiz (local or public) into JSON or simple text format.
+* **Targeted Deletion:**
+
+  * *Local Quizzes:* Permanently delete quiz and progress.
+  * *Public Quizzes:* Delete progress only—quiz stays available.
+
+## 🚀 How to Use
+
+1. On the main screen, view your library divided into *My Local Quizzes* and the *Public Quiz Library*.
+2. Click **+ Load New Quiz**.
+3. Enter a quiz name (e.g., "Chapter 1 Review").
+4. Choose your input format and paste or upload your quiz data.
+5. Choose where to save your quiz:
+
+   * Unchecked box → saved locally.
+   * Checked box → added to the public Firebase library.
+6. Click **Create Quiz** to begin.
+7. Use **Save & Exit** anytime to return later with your progress intact.
+
+## 🔐 Admin Mode
+
+Admin tools are available for managing the public quiz library.
+
+**Activation:** Add `?admin=true` to the URL.
+
+**Features:** A red **ADMIN DELETE** button appears on all public quizzes.
+
+**Warning:** This permanently deletes the quiz from Firebase for all users.
+
+## 📜 Quiz Formats
+
+You can load quizzes in two formats.
+
+### 1. JSON Format
+
+Provide a JSON array of question objects with keys:
+
+* `questionText` (string)
+* `options` (array of strings)
+* `correctAnswerIndex` (0-based number)
 
 **Example:**
 
@@ -49,20 +80,20 @@ Paste a JSON array of question objects. Each object must have:
   },
   {
     "questionText": "What is 2 + 2?",
-    "options": ["3", "4", "5", "6"],
+    "options": ["3", "4", "5"],
     "correctAnswerIndex": 1
   }
 ]
 ```
 
-#### 2\. Simple Text Format
+### 2. Simple Text Format
 
-Paste plain text following this format:
+Rules:
 
-  * The question is the first line.
-  * Each answer is on a new line.
-  * The correct answer is marked with an asterisk (`*`) at the beginning.
-  * Separate questions with a blank line.
+* First line is the question.
+* Following lines are answer choices.
+* Mark the correct answer with a leading `*`.
+* Separate question blocks with a blank line.
 
 **Example:**
 
@@ -77,24 +108,23 @@ What is 2 + 2?
 3
 *4
 5
-6
 ```
 
 ## 💻 How to Run Locally
 
-1.  Clone this repository:
-    ```bash
-    git clone https://github.com/your-username/your-repo-name.git
-    ```
-2.  Navigate to the directory:
-    ```bash
-    cd your-repo-name
-    ```
-3.  For the best experience (and to avoid browser security issues with `file://`):
-      * If you have **VS Code**, install the **Live Server** extension, right-click `index.html`, and choose "Open with Live Server".
-      * If you have Python, run `python3 -m http.server` (or `python -m SimpleHTTPServer` for Python 2) and open `http://localhost:8000` in your browser.
+1. Clone the repository or download `index.html`, `script.js`, and `style.css`.
+2. Because the app uses JavaScript modules, run it using a local web server (not by opening the file directly).
 
-<!-- end list -->
+### Using VS Code
 
+* Install **Live Server** → Right-click `index.html` → *Open with Live Server*.
+
+### Using Python
+
+```bash
+python3 -m http.server
 ```
-```
+
+Open `http://localhost:8000`.
+
+**Note:** Public quiz features require internet access for Firebase. Local quizzes work offline after the initial load.
