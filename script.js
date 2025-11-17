@@ -68,6 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const setupError = document.getElementById('setup-error');
     // *** NEW ELEMENT REFERENCE ***
     const publicCheckbox = document.getElementById('public-checkbox');
+    const quizNameInput = document.getElementById('quiz-name-input');
 
     // Screen 3: Quiz
     const quizContainer = document.getElementById('quiz-container');
@@ -474,20 +475,25 @@ document.addEventListener('DOMContentLoaded', () => {
         loadQuizBtn.textContent = isPublic ? 'Saving to Public Library...' : 'Saving locally...';
         // ---
 
-        let quizName = "Pasted Quiz";
+        let quizName = ""; // Declared here
         let quizData = null;
 
         try {
+            // --- NEW: Get Quiz Name from input ---
+            quizName = quizNameInput.value.trim();
+            if (!quizName) {
+                throw new Error('Please enter a name for your quiz.');
+            }
+            // ---
+
             if (currentLoadTab === 'json') {
                 const file = fileInput.files[0];
                 const pastedText = jsonTextInput.value;
 
                 if (file) {
-                    quizName = file.name.replace(/\.json$|\.txt$/i, '');
                     const fileText = await file.text();
                     quizData = JSON.parse(fileText);
                 } else if (pastedText) {
-                    quizName = `Pasted JSON Quiz (${new Date().toLocaleDateString()})`;
                     quizData = JSON.parse(pastedText);
                 } else {
                     throw new Error('Please paste JSON data or upload a file.');
@@ -497,7 +503,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!simpleText) {
                     throw new Error('Please paste your simple text data.');
                 }
-                quizName = `Pasted Text Quiz (${new Date().toLocaleDateString()})`;
                 quizData = parseSimpleText(simpleText);
             }
 
@@ -553,8 +558,7 @@ document.addEventListener('DOMContentLoaded', () => {
             loadQuizBtn.textContent = 'Create Quiz'; // Reset button text
         }
     });
-
-    // --- *** MODIFIED: resetSetupForm (resets checkbox) *** ---
+    // --- *** MODIFIED: resetSetupForm (resets checkbox and new name input) *** ---
     function resetSetupForm() {
         jsonTextInput.value = '';
         simpleTextInput.value = '';
@@ -562,6 +566,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fileNameDisplay.textContent = 'No file chosen';
         setupError.classList.add('hidden');
         publicCheckbox.checked = false; // Reset the checkbox
+        quizNameInput.value = ''; // *** NEW: Reset the name input ***
     }
 
     function parseSimpleText(text) {
