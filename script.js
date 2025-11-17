@@ -1,12 +1,41 @@
+const firebaseConfig = {
+  apiKey: "AIzaSyDk9qs4OlzUKlPKB2TZvRJqqAeeApeHgtc",
+  authDomain: "quiz-manager-e39be.firebaseapp.com",
+  projectId: "quiz-manager-e39be",
+  storageBucket: "quiz-manager-e39be.firebasestorage.app",
+  messagingSenderId: "739408414646",
+  appId: "1:739408414646:web:0be12679191aad40d2e317",
+  measurementId: "G-R80HWKGNL6"
+};
+
+// ===== BUG FIX: Initialize Firebase using the 'compat' global object =====
+firebase.initializeApp(firebaseConfig);
+
+// Create a reference to the Firestore database
+const db = firebase.firestore();
+// Create a reference to our "quizzes" collection
+const quizCollection = db.collection('quizzes');
+
+
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- STATE VARIABLES ---
     const STORAGE_KEY = 'quizManagerStorage';
+    
+    // appState no longer holds the full quizData,
+    // just the *progress* for quizzes the user has started.
     let appState = { activeQuizzes: [] };
-    let currentQuizId = null;
+    
+    // This new map will store the public quiz definitions
+    // fetched from Firebase, so we don't have to re-fetch them.
+    let publicQuizMap = new Map();
+    
+    let currentQuizId = null; // This ID will now be the Firestore Document ID
     let currentLoadTab = 'json'; // 'json' or 'text'
+    let currentExtractTab = 'json'; // 'json' or 'text'
     
     // --- ELEMENT REFERENCES ---
+    // (Element references are unchanged)
     // Containers
     const screenContainers = {
         'list': document.getElementById('quiz-list-container'),
@@ -64,8 +93,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const tocModalContainer = document.getElementById('toc-modal-container');
     const tocGrid = document.getElementById('toc-grid');
     const closeTocBtn = document.getElementById('close-toc-btn');
+
+    // --- NEW: Extract Modal Elements ---
+    const extractModalContainer = document.getElementById('extract-modal-container');
+    const closeExtractBtn = document.getElementById('close-extract-btn');
+    const extractQuizName = document.getElementById('extract-quiz-name');
+    const extractTabBtnJson = document.getElementById('extract-tab-btn-json');
+    const extractTabBtnText = document.getElementById('extract-tab-btn-text');
+    const extractTabContentJson = document.getElementById('extract-tab-content-json');
+    const extractTabContentText = document.getElementById('extract-tab-content-text');
+    const extractJsonTextarea = document.getElementById('extract-json-textarea');
+    const extractTextTextarea = document.getElementById('extract-text-textarea');
+    const copyJsonBtn = document.getElementById('copy-json-btn');
+    const copyTextBtn = document.getElementById('copy-text-btn');
     
     // --- STORAGE FUNCTIONS ---
+    // These functions now ONLY save/load the user's *progress*.
+    // The main quiz data is loaded from Firebase.
 
     function loadStateFromStorage() {
         const storedData = localStorage.getItem(STORAGE_KEY);
@@ -74,23 +118,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!appState.activeQuizzes) {
                 appState.activeQuizzes = [];
             }
-            // Backwards compatibility for the 'visited' array
-            appState.activeQuizzes.forEach(quiz => {
-                if (!quiz.visited || quiz.visited.length !== quiz.quizData.length) {
-                    console.log('Fixing visited array for quiz:', quiz.name);
-                    quiz.visited = new Array(quiz.quizData.length).fill(false);
-                    // Mark all ANSWERED questions as visited
-                    quiz.userAnswers.forEach((answer, index) => {
-                        if (answer !== null) {
-                            quiz.visited[index] = true;
-                        }
-                    });
-                    // And mark the *current* question as visited (if it's valid)
-                    if (quiz.currentQuestionIndex < quiz.quizData.length) {
-                        quiz.visited[quiz.currentQuestionIndex] = true;
-                    }
-                }
-            });
         } else {
             appState = { activeQuizzes: [] };
         }
@@ -99,30 +126,16 @@ document.addEventListener('DOMContentLoaded', () => {
     function saveStateToStorage() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
     }
-
-    function generateId() {
-        if (window.crypto && window.crypto.randomUUID) {
-            return window.crypto.randomUUID();
-        }
-        return `quiz-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
-    }
     
+    // This now just saves the *progress* to localStorage
     function updateQuizProgress() {
         saveStateToStorage();
     }
 
-    function deleteQuiz(quizId) {
+    // This now deletes the user's *progress*
+    function deleteQuizProgress(quizId) {
         appState.activeQuizzes = appState.activeQuizzes.filter(q => q.id !== quizId);
         saveStateToStorage();
-    }
-
-    function renameQuiz(quizId, newName) {
-        const quiz = appState.activeQuizzes.find(q => q.id === quizId);
-        if (quiz && newName) {
-            quiz.name = newName;
-            saveStateToStorage();
-            renderQuizList(); // Re-render to show new name
-        }
     }
 
     // --- NAVIGATION ---
@@ -138,55 +151,118 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- SCREEN 1: QUIZ LIST LOGIC ---
+    
+    // --- NEW: Load Public Quizzes from Firebase ---
+    async function loadAndRenderPublicQuizzes() {
+        activeQuizList.innerHTML = '<p class="text-gray-400">Loading public quizzes...</p>';
+        noQuizzesMessage.classList.add('hidden');
+        
+        publicQuizMap.clear(); // Clear the cache
+        let publicQuizzes = [];
+        
+        try {
+            // ===== BUG FIX: This line now works because 'quizCollection' is defined =====
+            const snapshot = await quizCollection.get();
+            if (snapshot.empty) {
+                noQuizzesMessage.classList.remove('hidden');
+                activeQuizList.innerHTML = '';
+                return;
+            }
+            
+            snapshot.forEach(doc => {
+                const quizData = doc.data();
+                // Basic validation
+                if (quizData.name && quizData.quizData) {
+                    publicQuizzes.push({
+                        id: doc.id, // The Firebase Document ID
+                        name: quizData.name,
+                        quizData: quizData.quizData // The array of questions
+                    });
+                    // Store in our local cache
+                    publicQuizMap.set(doc.id, {
+                        id: doc.id,
+                        name: quizData.name,
+                        quizData: quizData.quizData
+                    });
+                } else {
+                    console.warn("Skipping malformed quiz document:", doc.id);
+                }
+            });
+            
+            renderQuizList(publicQuizzes); // Pass the loaded quizzes to the render function
+            
+        } catch (error) {
+            console.error("Error loading quizzes:", error);
+            activeQuizList.innerHTML = '<p class="text-red-400">Error loading public quizzes. Check console.</p>';
+        }
+    }
 
-    function renderQuizList() {
+    // --- MODIFIED: renderQuizList ---
+    // It now takes the list of public quizzes as an argument
+    // and *merges* it with the local progress from appState.
+    function renderQuizList(publicQuizzes) {
         activeQuizList.innerHTML = ''; // Clear existing list
         
-        if (appState.activeQuizzes.length === 0) {
+        if (publicQuizzes.length === 0) {
             noQuizzesMessage.classList.remove('hidden');
         } else {
             noQuizzesMessage.classList.add('hidden');
-            appState.activeQuizzes.forEach(quiz => {
+            
+            // Loop over the *public* quizzes from Firebase
+            publicQuizzes.forEach(publicQuiz => {
                 const quizItem = document.createElement('div');
-                // --- UPDATED STYLES HERE ---
                 quizItem.className = 'bg-gray-800 p-4 rounded-lg shadow-lg ring-1 ring-gray-700/50';
                 
-                const totalQuestions = quiz.quizData.length;
-                const answeredCount = quiz.userAnswers.filter(a => a !== null).length;
-                const isFinished = answeredCount === totalQuestions;
-                const progress = isFinished ? totalQuestions : quiz.currentQuestionIndex;
+                const totalQuestions = publicQuiz.quizData.length;
+                
+                // Check if we have local progress for this quiz
+                const localProgress = appState.activeQuizzes.find(q => q.id === publicQuiz.id);
+                
+                let progressText = '';
+                let buttonText = 'Start';
+                let buttonIcon = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
+                let isFinished = false;
 
-                // --- UPDATED INNER HTML WITH ICONS ---
+                if (localProgress) {
+                    const answeredCount = localProgress.userAnswers.filter(a => a !== null).length;
+                    isFinished = answeredCount === totalQuestions;
+                    
+                    if (isFinished) {
+                        progressText = `Finished! (Score: ${localProgress.score})`;
+                        buttonText = 'Review';
+                        buttonIcon = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>';
+                    } else {
+                        progressText = `Progress: ${localProgress.currentQuestionIndex} / ${totalQuestions} (Score: ${localProgress.score})`;
+                        buttonText = 'Continue';
+                    }
+                } else {
+                    progressText = `Not started (${totalQuestions} questions)`;
+                }
+
+                // Removed the Rename button for simplicity
+                // --- NEW: Added Extract button ---
                 quizItem.innerHTML = `
                     <div class="flex items-center justify-between mb-2">
-                        <h3 class="font-semibold text-lg text-white" data-id="${quiz.id}" data-type="name">${quiz.name}</h3>
-                        <div class="hidden flex items-center" data-id="${quiz.id}" data-type="edit-container">
-                            <input type="text" value="${quiz.name}" class="bg-gray-700 text-white p-1 rounded-md text-sm">
-                            <button data-id="${quiz.id}" class="save-name-btn text-sm text-green-400 hover:text-green-300 ml-2">Save</button>
-                        </div>
-                        <button data-id="${quiz.id}" class="rename-btn text-sm text-blue-400 hover:text-blue-300 flex items-center space-x-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z" />
-                            </svg>
-                            <span>Rename</span>
-                        </button>
+                        <h3 class="font-semibold text-lg text-white" data-id="${publicQuiz.id}" data-type="name">${publicQuiz.name}</h3>
                     </div>
                     <p class="text-sm text-gray-400 mb-3">
-                        ${isFinished ? 'Finished! (Click to review)' : `Progress: ${progress} / ${totalQuestions} questions`}
-                        (Score: ${quiz.score})
+                        ${progressText}
                     </p>
                     <div class="flex space-x-2">
-                        <button data-id="${quiz.id}" class="continue-btn flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-sm font-medium flex items-center justify-center space-x-2">
-                            ${isFinished ? 
-                                '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg><span>Review</span>' : 
-                                '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg><span>Continue</span>'
-                            }
+                        <button data-id="${publicQuiz.id}" class="continue-btn flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-sm font-medium flex items-center justify-center space-x-2">
+                            ${buttonIcon}<span>${buttonText}</span>
                         </button>
-                        <button data-id="${quiz.id}" class="delete-btn bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-md text-sm font-medium flex items-center justify-center space-x-2">
+                        <button data-id="${publicQuiz.id}" class="extract-btn bg-gray-600 hover:bg-gray-500 text-white px-3 py-2 rounded-md text-sm font-medium flex items-center justify-center space-x-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l-4 4-4-4M6 16l-4-4 4-4" />
+                            </svg>
+                            <span>Extract</span>
+                        </button>
+                        <button data-id="${publicQuiz.id}" class="delete-btn bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-md text-sm font-medium flex items-center justify-center space-x-2 ${!localProgress ? 'hidden' : ''}">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
-                            <span>Delete</span>
+                            <span>Delete Progress</span>
                         </button>
                     </div>
                 `;
@@ -197,39 +273,20 @@ document.addEventListener('DOMContentLoaded', () => {
             activeQuizList.querySelectorAll('.continue-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const quizId = e.currentTarget.dataset.id;
-                    const quiz = appState.activeQuizzes.find(q => q.id === quizId);
-                    const answeredCount = quiz.userAnswers.filter(a => a !== null).length;
-                    const isFinished = answeredCount === quiz.quizData.length;
-                    
-                    if (isFinished) {
-                        currentQuizId = quizId;
-                        showResults();
-                    } else {
-                        startQuiz(quizId);
-                    }
+                    startQuiz(quizId); // Pass the public quiz ID
                 });
             });
             activeQuizList.querySelectorAll('.delete-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
-                    deleteQuiz(e.currentTarget.dataset.id);
-                    renderQuizList(); // Re-render after deletion
+                    deleteQuizProgress(e.currentTarget.dataset.id);
+                    loadAndRenderPublicQuizzes(); // Re-render after deletion
                 });
             });
-            activeQuizList.querySelectorAll('.rename-btn').forEach(btn => {
+            // --- NEW: Event listener for Extract button ---
+            activeQuizList.querySelectorAll('.extract-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const quizId = e.currentTarget.dataset.id;
-                    const item = e.currentTarget.closest('.bg-gray-800');
-                    item.querySelector(`[data-type="name"]`).classList.add('hidden');
-                    item.querySelector(`[data-type="edit-container"]`).classList.remove('hidden');
-                    e.currentTarget.classList.add('hidden');
-                });
-            });
-            activeQuizList.querySelectorAll('.save-name-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const quizId = e.currentTarget.dataset.id;
-                    const item = e.currentTarget.closest('.bg-gray-800');
-                    const input = item.querySelector('input[type="text"]');
-                    renameQuiz(quizId, input.value);
+                    showExtractModal(quizId);
                 });
             });
         }
@@ -272,12 +329,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // --- MODIFIED: loadQuizBtn (Now saves to Firebase) ---
     loadQuizBtn.addEventListener('click', async () => {
         loadQuizBtn.disabled = true;
-        loadQuizBtn.textContent = 'Loading...';
+        loadQuizBtn.textContent = 'Saving to Firebase...';
         
-        await new Promise(res => setTimeout(res, 50)); 
-
         let quizName = "Pasted Quiz";
         let quizData = null;
 
@@ -306,10 +362,22 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (validateQuizData(quizData)) {
-                const newQuiz = {
-                    id: generateId(),
+                
+                // --- NEW: Save to Firebase ---
+                const newPublicQuiz = {
                     name: quizName,
-                    quizData: quizData,
+                    quizData: quizData
+                };
+                
+                // ===== BUG FIX: This line now works =====
+                const docRef = await quizCollection.add(newPublicQuiz);
+                console.log("Quiz saved to Firebase with ID:", docRef.id);
+                
+                // ---
+                
+                // Now, we *also* create the local progress
+                const newQuizProgress = {
+                    id: docRef.id, // Use the ID from Firebase
                     currentQuestionIndex: 0,
                     score: 0,
                     userAnswers: new Array(quizData.length).fill(null),
@@ -317,11 +385,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     reviewingSkipped: false
                 };
                 
-                appState.activeQuizzes.push(newQuiz);
+                appState.activeQuizzes.push(newQuizProgress);
                 saveStateToStorage();
                 
                 resetSetupForm();
-                startQuiz(newQuiz.id);
+                startQuiz(docRef.id); // Start the quiz using the new Firebase ID
 
             } else {
                 throw new Error('Invalid quiz data structure.');
@@ -330,7 +398,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showSetupError(error.message);
         } finally {
             loadQuizBtn.disabled = false;
-            loadQuizBtn.textContent = 'Load and Start Quiz';
+            loadQuizBtn.textContent = 'Create and Save Public Quiz';
         }
     });
 
@@ -396,43 +464,116 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- SCREEN 3: QUIZ LOGIC ---
 
-    function startQuiz(quizId) {
-        const quiz = appState.activeQuizzes.find(q => q.id === quizId);
-        if (!quiz) {
-            console.error("Quiz not found!");
-            showScreen('list');
-            return;
+    // --- MODIFIED: startQuiz (Now async) ---
+    async function startQuiz(quizId) {
+        // Step 1: Get the Quiz Definition (from cache or Firebase)
+        let quizDefinition = publicQuizMap.get(quizId);
+        if (!quizDefinition) {
+            try {
+                // ===== BUG FIX: This line now works =====
+                const doc = await quizCollection.doc(quizId).get();
+                if (doc.exists) {
+                    quizDefinition = { id: doc.id, ...doc.data() };
+                    publicQuizMap.set(quizId, quizDefinition);
+                } else {
+                    console.error("No quiz found with that ID!");
+                    showScreen('list');
+                    return;
+                }
+            } catch (err) {
+                console.error("Error fetching quiz definition:", err);
+                showScreen('list');
+                return;
+            }
+        }
+
+        // Step 2: Find or create the Local Progress
+        let quizProgress = appState.activeQuizzes.find(q => q.id === quizId);
+        
+        if (!quizProgress) {
+            // User hasn't started this quiz. Create a new progress object.
+            quizProgress = {
+                id: quizId,
+                currentQuestionIndex: 0,
+                score: 0,
+                userAnswers: new Array(quizDefinition.quizData.length).fill(null),
+                visited: new Array(quizDefinition.quizData.length).fill(false),
+                reviewingSkipped: false
+            };
+            appState.activeQuizzes.push(quizProgress);
+            saveStateToStorage();
         }
         
+        // Step 3: Check if this quiz is finished
+        const answeredCount = quizProgress.userAnswers.filter(a => a !== null).length;
+        const isFinished = answeredCount === quizDefinition.quizData.length;
+        
+        if (isFinished) {
+            currentQuizId = quizId;
+            showResults();
+            return;
+        }
+
+        // Step 4: Show the quiz screen
         currentQuizId = quizId;
         
-        quizTitle.textContent = quiz.name;
-        quizTitle.title = quiz.name;
-        totalQuestions.textContent = quiz.quizData.length;
+        quizTitle.textContent = quizDefinition.name;
+        quizTitle.title = quizDefinition.name;
+        totalQuestions.textContent = quizDefinition.quizData.length;
         
         showScreen('quiz');
         displayQuestion();
     }
 
+    // --- NEW: Helper function to get the current quiz ---
+    function getCurrentQuiz() {
+        if (!currentQuizId) return null;
+        
+        const progress = appState.activeQuizzes.find(q => q.id === currentQuizId);
+        const definition = publicQuizMap.get(currentQuizId);
+        
+        if (!progress || !definition) {
+            console.error("Could not find quiz state for ID:", currentQuizId);
+            return null;
+        }
+        
+        return { progress, definition };
+    }
+
+    // --- MODIFIED: updateProgressBar ---
     function updateProgressBar() {
-        const quiz = appState.activeQuizzes.find(q => q.id === currentQuizId);
-        const answeredCount = quiz.userAnswers.filter(a => a !== null).length;
-        const percent = (answeredCount / quiz.quizData.length) * 100;
+        const quiz = getCurrentQuiz();
+        if (!quiz) return;
+        
+        const answeredCount = quiz.progress.userAnswers.filter(a => a !== null).length;
+        const percent = (answeredCount / quiz.definition.quizData.length) * 100;
         progressBar.style.width = `${percent}%`;
     }
 
+    // --- MODIFIED: displayQuestion ---
     function displayQuestion() {
-        const quiz = appState.activeQuizzes.find(q => q.id === currentQuizId);
+        const quiz = getCurrentQuiz();
+        if (!quiz) return;
         
-        quiz.visited[quiz.currentQuestionIndex] = true;
+        const { progress, definition } = quiz;
         
-        const question = quiz.quizData[quiz.currentQuestionIndex];
+        // Ensure 'visited' array is correct length
+        if (progress.visited.length !== definition.quizData.length) {
+            progress.visited = new Array(definition.quizData.length).fill(false);
+            progress.userAnswers.forEach((a, i) => { 
+                if (a !== null) progress.visited[i] = true;
+            });
+        }
+        
+        progress.visited[progress.currentQuestionIndex] = true;
+        
+        const question = definition.quizData[progress.currentQuestionIndex];
         
         updateProgressBar();
         
         questionText.textContent = question.questionText;
-        questionCounter.textContent = quiz.currentQuestionIndex + 1;
-        currentScore.textContent = quiz.score;
+        questionCounter.textContent = progress.currentQuestionIndex + 1;
+        currentScore.textContent = progress.score;
         
         optionsContainer.innerHTML = '';
         feedbackMessage.textContent = '';
@@ -440,7 +581,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         quizContainer.classList.remove('shake', 'pop');
         
-        if (quiz.reviewingSkipped) {
+        if (progress.reviewingSkipped) {
             skippedModeBanner.classList.remove('hidden');
         } else {
             skippedModeBanner.classList.add('hidden');
@@ -448,7 +589,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         question.options.forEach((option, index) => {
             const button = document.createElement('button');
-            // Add number prefix to option text for clarity with keyboard shortcuts
             button.textContent = `${index + 1}. ${option}`;
             button.dataset.index = index;
             button.className = "w-full text-left p-4 bg-gray-700 hover:bg-gray-600 rounded-md transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-md";
@@ -458,7 +598,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         skipQuestionBtn.textContent = 'Skip';
         
-        const existingAnswer = quiz.userAnswers[quiz.currentQuestionIndex];
+        const existingAnswer = progress.userAnswers[progress.currentQuestionIndex];
         if (existingAnswer !== null) {
             showFeedback(existingAnswer, false);
             skipQuestionBtn.disabled = true;
@@ -471,39 +611,54 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
         
-        prevQuestionBtn.disabled = quiz.currentQuestionIndex === 0;
+        prevQuestionBtn.disabled = progress.currentQuestionIndex === 0;
     }
 
+    // --- MODIFIED: handleOptionClick ---
     function handleOptionClick(e) {
-        const quiz = appState.activeQuizzes.find(q => q.id === currentQuizId);
-        const { currentQuestionIndex, quizData } = quiz;
+        const quiz = getCurrentQuiz();
+        if (!quiz) return;
+        
+        const { progress, definition } = quiz;
+        const { currentQuestionIndex, quizData } = {
+            currentQuestionIndex: progress.currentQuestionIndex,
+            quizData: definition.quizData
+        };
+        
         const question = quizData[currentQuestionIndex];
         const correctIndex = question.correctAnswerIndex;
         
-        const selectedButton = e.currentTarget; // Use currentTarget
+        const selectedButton = e.currentTarget;
         const selectedIndex = parseInt(selectedButton.dataset.index);
 
-        const oldAnswerIndex = quiz.userAnswers[currentQuestionIndex];
+        const oldAnswerIndex = progress.userAnswers[currentQuestionIndex];
         const wasCorrect = (oldAnswerIndex !== null) && (oldAnswerIndex === correctIndex);
         const isCorrect = (selectedIndex === correctIndex);
 
         if (!wasCorrect && isCorrect) {
-            quiz.score++;
+            progress.score++;
         } else if (wasCorrect && !isCorrect) {
-            quiz.score--;
+            progress.score--;
         }
 
-        quiz.userAnswers[currentQuestionIndex] = selectedIndex;
-        currentScore.textContent = quiz.score;
+        progress.userAnswers[currentQuestionIndex] = selectedIndex;
+        currentScore.textContent = progress.score;
 
         showFeedback(selectedIndex, true);
         
-        updateQuizProgress();
+        updateQuizProgress(); // Saves progress to localStorage
     }
     
+    // --- MODIFIED: showFeedback ---
     function showFeedback(selectedIndex, withAnimation) {
-        const quiz = appState.activeQuizzes.find(q => q.id === currentQuizId);
-        const { currentQuestionIndex, quizData } = quiz;
+        const quiz = getCurrentQuiz();
+        if (!quiz) return;
+        
+        const { progress, definition } = quiz;
+        const { currentQuestionIndex, quizData } = {
+            currentQuestionIndex: progress.currentQuestionIndex,
+            quizData: definition.quizData
+        };
         const question = quizData[currentQuestionIndex];
         const correctIndex = question.correctAnswerIndex;
         
@@ -530,36 +685,40 @@ document.addEventListener('DOMContentLoaded', () => {
         nextQuestionBtn.classList.remove('hidden');
     }
     
+    // --- MODIFIED: goToNextQuestion ---
     function goToNextQuestion() {
-        const quiz = appState.activeQuizzes.find(q => q.id === currentQuizId);
+        const quiz = getCurrentQuiz();
+        if (!quiz) return;
+        
+        const { progress, definition } = quiz;
 
-        if (quiz.reviewingSkipped) {
-            let nextSkippedIndex = quiz.userAnswers.indexOf(null, quiz.currentQuestionIndex + 1);
+        if (progress.reviewingSkipped) {
+            let nextSkippedIndex = progress.userAnswers.indexOf(null, progress.currentQuestionIndex + 1);
             
             if (nextSkippedIndex === -1) {
-                nextSkippedIndex = quiz.userAnswers.indexOf(null);
+                nextSkippedIndex = progress.userAnswers.indexOf(null);
             }
 
-            if (nextSkippedIndex !== -1 && nextSkippedIndex !== quiz.currentQuestionIndex) {
-                quiz.currentQuestionIndex = nextSkippedIndex;
+            if (nextSkippedIndex !== -1 && nextSkippedIndex !== progress.currentQuestionIndex) {
+                progress.currentQuestionIndex = nextSkippedIndex;
             } else {
-                const allSkipped = quiz.userAnswers.filter(a => a === null).length;
+                const allSkipped = progress.userAnswers.filter(a => a === null).length;
                 if (allSkipped === 0) {
                     updateQuizProgress();
                     showResults();
                     return;
                 } else {
-                    quiz.currentQuestionIndex = nextSkippedIndex;
+                    progress.currentQuestionIndex = nextSkippedIndex;
                 }
             }
         } else {
-            quiz.currentQuestionIndex++;
+            progress.currentQuestionIndex++;
             
-            if (quiz.currentQuestionIndex >= quiz.quizData.length) {
-                const firstSkippedIndex = quiz.userAnswers.indexOf(null);
+            if (progress.currentQuestionIndex >= definition.quizData.length) {
+                const firstSkippedIndex = progress.userAnswers.indexOf(null);
                 if (firstSkippedIndex !== -1) {
-                    quiz.reviewingSkipped = true;
-                    quiz.currentQuestionIndex = firstSkippedIndex;
+                    progress.reviewingSkipped = true;
+                    progress.currentQuestionIndex = firstSkippedIndex;
                 } else {
                     updateQuizProgress();
                     showResults();
@@ -575,9 +734,11 @@ document.addEventListener('DOMContentLoaded', () => {
     nextQuestionBtn.addEventListener('click', goToNextQuestion);
     
     prevQuestionBtn.addEventListener('click', () => {
-        const quiz = appState.activeQuizzes.find(q => q.id === currentQuizId);
-        if (quiz.currentQuestionIndex > 0) {
-            quiz.currentQuestionIndex--;
+        const quiz = getCurrentQuiz();
+        if (!quiz) return;
+        
+        if (quiz.progress.currentQuestionIndex > 0) {
+            quiz.progress.currentQuestionIndex--;
             updateQuizProgress();
             displayQuestion();
         }
@@ -589,18 +750,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- SCREEN 4: RESULTS LOGIC ---
     
+    // --- MODIFIED: showResults ---
     function showResults() {
-        const quiz = appState.activeQuizzes.find(q => q.id === currentQuizId);
+        const quiz = getCurrentQuiz();
         if (!quiz) {
-            renderQuizList();
+            loadAndRenderPublicQuizzes();
             showScreen('list');
             return;
         }
         
-        quiz.reviewingSkipped = false; // Reset for next time
+        const { progress, definition } = quiz;
+        
+        progress.reviewingSkipped = false; // Reset for next time
         updateQuizProgress();
         
-        const { score, quizData } = quiz;
+        const { score } = progress;
+        const { quizData } = definition;
+        
         showScreen('results');
         
         scoreText.textContent = `${score} / ${quizData.length}`;
@@ -616,17 +782,20 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // --- SCREEN 5: REVIEW LOGIC ---
     
+    // --- MODIFIED: renderReviewList ---
     function renderReviewList() {
-        const quiz = appState.activeQuizzes.find(q => q.id === currentQuizId);
+        const quiz = getCurrentQuiz();
         if (!quiz) {
             showScreen('list');
             return;
         }
+
+        const { progress, definition } = quiz;
         
         reviewList.innerHTML = '';
         
-        quiz.quizData.forEach((question, index) => {
-            const userAnswerIndex = quiz.userAnswers[index];
+        definition.quizData.forEach((question, index) => {
+            const userAnswerIndex = progress.userAnswers[index];
             const correctIndex = question.correctAnswerIndex;
             
             let optionsHTML = '';
@@ -671,38 +840,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- TOC MODAL LOGIC ---
 
+    // --- MODIFIED: renderTocModal ---
     function renderTocModal() {
-        const quiz = appState.activeQuizzes.find(q => q.id === currentQuizId);
+        const quiz = getCurrentQuiz();
+        if (!quiz) return;
+        
+        const { progress, definition } = quiz;
         tocGrid.innerHTML = ''; // Clear old grid
 
-        quiz.quizData.forEach((question, index) => {
+        definition.quizData.forEach((question, index) => {
             const button = document.createElement('button');
             button.textContent = index + 1;
             button.dataset.index = index;
-            // --- UPDATED STYLES HERE ---
             button.className = 'h-10 w-10 flex items-center justify-center font-bold rounded-full transition-all';
 
             // Apply status styles
-            const userAnswer = quiz.userAnswers[index];
-            const isVisited = quiz.visited[index];
+            const userAnswer = progress.userAnswers[index];
+            const isVisited = progress.visited[index];
             
             if (userAnswer !== null) {
-                // Answered
                 if (userAnswer === question.correctAnswerIndex) {
                     button.classList.add('bg-green-600', 'text-white'); // Correct
                 } else {
                     button.classList.add('bg-red-600', 'text-white'); // Wrong
                 }
             } else if (isVisited) {
-                // Skipped (visited but no answer)
-                button.classList.add('bg-yellow-600', 'text-white');
+                button.classList.add('bg-yellow-600', 'text-white'); // Skipped
             } else {
-                // Not Visited
-                button.classList.add('bg-gray-600', 'text-gray-200');
+                button.classList.add('bg-gray-600', 'text-gray-200'); // Not Visited
             }
             
-            // Highlight current question
-            if (index === quiz.currentQuestionIndex) {
+            if (index === progress.currentQuestionIndex) {
                 button.classList.add('ring-4', 'ring-blue-400');
             }
             
@@ -717,29 +885,130 @@ document.addEventListener('DOMContentLoaded', () => {
         tocModalContainer.classList.add('hidden');
     }
 
+    // --- MODIFIED: jumpToQuestion ---
     function jumpToQuestion(index) {
-        const quiz = appState.activeQuizzes.find(q => q.id === currentQuizId);
-        quiz.currentQuestionIndex = index;
+        const quiz = getCurrentQuiz();
+        if (!quiz) return;
+        
+        quiz.progress.currentQuestionIndex = index;
         updateQuizProgress();
         displayQuestion();
         hideTocModal();
     }
-    
+
+    // --- NEW: EXTRACT MODAL LOGIC ---
+
+    function switchExtractTab(tab) {
+        currentExtractTab = tab;
+        if (tab === 'json') {
+            extractTabBtnJson.classList.add('text-white', 'border-blue-500');
+            extractTabBtnJson.classList.remove('text-gray-400', 'border-transparent');
+            extractTabBtnText.classList.add('text-gray-400', 'border-transparent');
+            extractTabBtnText.classList.remove('text-white', 'border-blue-500');
+            
+            extractTabContentJson.classList.remove('hidden');
+            extractTabContentText.classList.add('hidden');
+        } else {
+            extractTabBtnText.classList.add('text-white', 'border-blue-500');
+            extractTabBtnText.classList.remove('text-gray-400', 'border-transparent');
+            extractTabBtnJson.classList.add('text-gray-400', 'border-transparent');
+            extractTabBtnJson.classList.remove('text-white', 'border-blue-500');
+
+            extractTabContentText.classList.remove('hidden');
+            extractTabContentJson.classList.add('hidden');
+        }
+    }
+
+    function convertQuizDataToSimpleText(quizData) {
+        const textBlocks = quizData.map(question => {
+            const qText = question.questionText;
+            const optionsText = question.options.map((option, index) => {
+                if (index === question.correctAnswerIndex) {
+                    return `*${option}`;
+                }
+                return option;
+            }).join('\n');
+            return `${qText}\n${optionsText}`;
+        });
+        return textBlocks.join('\n\n');
+    }
+
+    function showExtractModal(quizId) {
+        const quizDefinition = publicQuizMap.get(quizId);
+        if (!quizDefinition) {
+            console.error("Could not find quiz to extract");
+            return;
+        }
+
+        // Reset tabs to default
+        switchExtractTab('json');
+        
+        extractQuizName.textContent = quizDefinition.name;
+        
+        // Format JSON
+        const jsonString = JSON.stringify(quizDefinition.quizData, null, 2);
+        extractJsonTextarea.value = jsonString;
+        
+        // Format Simple Text
+        const textString = convertQuizDataToSimpleText(quizDefinition.quizData);
+        extractTextTextarea.value = textString;
+
+        // Reset copy button text
+        copyJsonBtn.textContent = 'Copy JSON to Clipboard';
+        copyTextBtn.textContent = 'Copy Text to Clipboard';
+        
+        extractModalContainer.classList.remove('hidden');
+    }
+
+    function hideExtractModal() {
+        extractModalContainer.classList.add('hidden');
+    }
+
+    function copyToClipboard(textarea, button) {
+        navigator.clipboard.writeText(textarea.value).then(() => {
+            button.textContent = 'Copied!';
+            setTimeout(() => {
+                // Reset text based on which button it is
+                if (button.id === 'copy-json-btn') {
+                    button.textContent = 'Copy JSON to Clipboard';
+                } else {
+                    button.textContent = 'Copy Text to Clipboard';
+                }
+            }, 2000);
+        }).catch(err => {
+            console.error('Failed to copy: ', err);
+            button.textContent = 'Failed to copy';
+        });
+    }
+
+    extractTabBtnJson.addEventListener('click', () => switchExtractTab('json'));
+    extractTabBtnText.addEventListener('click', () => switchExtractTab('text'));
+    closeExtractBtn.addEventListener('click', hideExtractModal);
+    extractModalContainer.addEventListener('click', (e) => {
+        if (e.target === extractModalContainer) {
+            hideExtractModal();
+        }
+    });
+    copyJsonBtn.addEventListener('click', () => copyToClipboard(extractJsonTextarea, copyJsonBtn));
+    copyTextBtn.addEventListener('click', () => copyToClipboard(extractTextTextarea, copyTextBtn));
+
+
     // --- INITIALIZATION & NAVIGATION LISTENERS ---
 
     loadNewQuizBtn.addEventListener('click', () => showScreen('setup'));
     backToListBtn.addEventListener('click', () => showScreen('list'));
     
     quizBackToListBtn.addEventListener('click', () => {
-        updateQuizProgress();
-        renderQuizList();
+        updateQuizProgress(); // Save progress
+        loadAndRenderPublicQuizzes(); // Go back to the list
         showScreen('list');
     });
     
+    // --- MODIFIED: This is your requested feature! ---
+    // It no longer deletes progress.
     resultsBackToListBtn.addEventListener('click', () => {
-        deleteQuiz(currentQuizId);
         currentQuizId = null;
-        renderQuizList();
+        loadAndRenderPublicQuizzes();
         showScreen('list');
     });
     
@@ -749,7 +1018,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // TOC Listeners
     showTocBtn.addEventListener('click', renderTocModal);
     closeTocBtn.addEventListener('click', hideTocModal);
-    // Close modal by clicking overlay
     tocModalContainer.addEventListener('click', (e) => {
         if (e.target === tocModalContainer) {
             hideTocModal();
@@ -757,46 +1025,42 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- KEYBOARD SHORTCUTS ---
+    // (This section is unchanged)
     document.addEventListener('keydown', (e) => {
-        // Check if user is typing in an input (e.g., in the setup screen or renaming a quiz)
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-            // Allow Enter to save on list screen rename
-            if (e.key === 'Enter' && !screenContainers.list.classList.contains('hidden') && e.target.closest('[data-type="edit-container"]')) {
-                e.preventDefault();
-                const editContainer = e.target.closest('[data-type="edit-container"]');
-                const saveBtn = editContainer.querySelector('.save-name-btn');
-                if (saveBtn) {
-                    saveBtn.click();
-                }
-            }
             return; // Don't process other shortcuts if typing
         }
 
-        // Check if TOC modal is open
         if (!tocModalContainer.classList.contains('hidden')) {
             if (e.key === 'Escape') {
                 e.preventDefault();
                 hideTocModal();
             }
-            return; // Don't process other keys if modal is open
+            return;
         }
 
-        // Check if quiz screen is active
+        // --- NEW: Close Extract Modal with Escape ---
+        if (!extractModalContainer.classList.contains('hidden')) {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                hideExtractModal();
+            }
+            return;
+        }
+
         if (!screenContainers.quiz.classList.contains('hidden')) {
             switch (e.key) {
                 case 'Enter':
-                    // Find the visible "next" or "skip" button and click it
                     if (!nextQuestionBtn.classList.contains('hidden') && !nextQuestionBtn.disabled) {
                         e.preventDefault();
                         goToNextQuestion();
                     } else if (!skipQuestionBtn.classList.contains('hidden') && !skipQuestionBtn.disabled) {
                         e.preventDefault();
-                        goToNextQuestion(); // Skip button also calls goToNextQuestion
+                        goToNextQuestion();
                     }
                     break;
                 
                 case 'Backspace':
-                    // Click the "previous" button if it's not disabled
                     if (!prevQuestionBtn.disabled) {
                         e.preventDefault();
                         prevQuestionBtn.click();
@@ -812,7 +1076,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 case '7':
                 case '8':
                 case '9':
-                    // Find the corresponding option button
                     const optionIndex = parseInt(e.key) - 1;
                     const optionButtons = optionsContainer.querySelectorAll('button');
                     
@@ -820,7 +1083,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const targetButton = optionButtons[optionIndex];
                         if (targetButton && !targetButton.disabled) {
                             e.preventDefault();
-                            targetButton.click(); // Programmatically click the button
+                            targetButton.click();
                         }
                     }
                     break;
@@ -832,8 +1095,8 @@ document.addEventListener('DOMContentLoaded', () => {
      * Main app initialization function
      */
     function initializeApp() {
-        loadStateFromStorage();
-        renderQuizList();
+        loadStateFromStorage(); // Load local *progress*
+        loadAndRenderPublicQuizzes(); // Load *public quizzes* from Firebase
         showScreen('list'); // Start on the home screen
     }
 

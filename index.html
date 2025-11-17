@@ -4,41 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Offline Quiz Manager</title>
-    <!-- Load Tailwind CSS from CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Load custom styles -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-gradient-to-br from-gray-900 to-gray-800 text-gray-200 font-sans p-4 md:p-8 min-h-screen">
 
     <div class="max-w-5xl mx-auto">
 
-        <!-- ===== 1. QUIZ LIST (HOME SCREEN) ===== -->
         <div id="quiz-list-container">
             <header class="flex items-center justify-between mb-6">
-                <h1 class="text-3xl font-bold text-white tracking-tight">Your Quizzes</h1>
+                <h1 class="text-3xl font-bold text-white tracking-tight">Public Quiz Library</h1>
                 <button id="load-new-quiz-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium flex items-center space-x-2 shadow-lg hover:shadow-blue-500/30 transition-shadow">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
                     </svg>
-                    <span>Load New Quiz</span>
+                    <span>Add New Public Quiz</span>
                 </button>
             </header>
             
             <div id="no-quizzes-message" class="text-center text-gray-400 bg-gray-800 shadow-lg ring-1 ring-gray-700/50 p-8 rounded-lg hidden">
                 <p>You have no active quizzes.</p>
-                <p>Click "Load New Quiz" to get started!</p>
+                <p>Click "Add New Public Quiz" to get started!</p>
             </div>
 
             <div id="active-quiz-list" class="space-y-4">
-                <!-- Quiz items will be injected here by script.js -->
-            </div>
+                </div>
         </div>
 
-        <!-- ===== 2. SETUP/LOAD QUIZ SCREEN ===== -->
         <div id="setup-container" class="hidden">
             <header class="flex items-center justify-between mb-6">
-                <h1 class="text-3xl font-bold text-white tracking-tight">Load a New Quiz</h1>
+                <h1 class="text-3xl font-bold text-white tracking-tight">Add a New Public Quiz</h1>
                 <button id="back-to-list-btn" class="text-sm text-blue-400 hover:text-blue-300 flex items-center space-x-1">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
@@ -48,7 +43,6 @@
             </header>
 
             <div class="bg-gray-800 p-6 rounded-lg shadow-2xl ring-1 ring-gray-700/50">
-                <!-- Tab Headers -->
                 <div class="border-b border-gray-700 mb-4">
                     <nav class="-mb-px flex space-x-6">
                         <button id="tab-btn-json" class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm text-white border-blue-500">
@@ -60,7 +54,6 @@
                     </nav>
                 </div>
                 
-                <!-- Tab Content: JSON -->
                 <div id="tab-content-json">
                     <p class="text-sm text-gray-400 mb-3">Paste your quiz JSON below:</p>
                     <textarea id="json-text-input" rows="8" class="w-full p-2 bg-gray-900 text-gray-200 rounded-md border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="[ { &quot;questionText&quot;: &quot;...&quot;, ... } ]"></textarea>
@@ -88,13 +81,11 @@
                                 <li>`"correctAnswerIndex"`: (number) The 0-based index of the correct option.</li>
                             </ul>
                             <p class="font-semibold mt-2">Prompt for AI Generation:</p>
-                            <!-- ===== THIS IS THE FIX for the overflow ===== -->
                             <pre class="bg-gray-700 p-2 rounded-md text-xs whitespace-pre-wrap">Generate a quiz as a JSON array. Each object in the array must have three keys: "questionText" (string), "options" (an array of 4 strings), and "correctAnswerIndex" (a number from 0 to 3).</pre>
                         </div>
                     </details>
                 </div>
 
-                <!-- Tab Content: Simple Text -->
                 <div id="tab-content-text" class="hidden">
                     <p class="text-sm text-gray-400 mb-3">Paste your simple text quiz below:</p>
                     <textarea id="simple-text-input" rows="8" class="w-full p-2 bg-gray-900 text-gray-200 rounded-md border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="What is 2+2?&#10;3&#10;*4&#10;5&#10;&#10;What is the capital of France?&#10;*Paris&#10;Berlin&#10;Rome"></textarea>
@@ -123,17 +114,14 @@ What is 2 + 2?
                     </details>
                 </div>
 
-                <!-- Load Button and Error Message -->
                 <div class="mt-6">
-                    <button id="load-quiz-btn" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-md font-medium text-lg shadow-lg hover:shadow-green-500/30 transition-shadow">Load and Start Quiz</button>
+                    <button id="load-quiz-btn" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-md font-medium text-lg shadow-lg hover:shadow-green-500/30 transition-shadow">Create and Save Public Quiz</button>
                     <p id="setup-error" class="text-red-400 text-sm text-center mt-3 hidden"></p>
                 </div>
             </div>
         </div>
         
-        <!-- ===== 3. QUIZ SCREEN ===== -->
         <div id="quiz-container" class="hidden">
-            <!-- Header Bar -->
             <div class="bg-gray-800 shadow-lg ring-1 ring-gray-700/50 p-4 rounded-lg mb-4">
                 <div class="flex items-center justify-between mb-3">
                     <h2 id="quiz-title" class="text-xl font-semibold text-white truncate" title="Quiz Name">...</h2>
@@ -152,7 +140,6 @@ What is 2 + 2?
                         </button>
                     </div>
                 </div>
-                <!-- Progress and Score -->
                 <div class="flex items-center justify-between text-sm text-gray-300">
                     <div>
                         Question: 
@@ -163,32 +150,26 @@ What is 2 + 2?
                         Score: <span id="current-score" class="font-bold">0</span>
                     </div>
                 </div>
-                <!-- Progress Bar -->
                 <div class="w-full bg-gray-700 rounded-full h-1.5 mt-2">
                     <div id="progress-bar" class="bg-blue-500 h-1.5 rounded-full transition-all" style="width: 10%"></div>
                 </div>
             </div>
 
-            <!-- Skipped Mode Banner -->
             <div id="skipped-mode-banner" class="hidden bg-yellow-800 text-yellow-200 p-3 rounded-md text-center text-sm mb-4 ring-1 ring-yellow-600">
                 You are answering skipped questions.
             </div>
 
-            <!-- Question Area -->
             <div class="bg-gray-800 p-4 md:p-6 rounded-lg shadow-2xl ring-1 ring-gray-700/50">
                 <h3 id="question-text" class="text-xl md:text-2xl font-semibold text-white mb-6 min-h-[60px]">
                     ...
                 </h3>
                 
                 <div id="options-container" class="space-y-3">
-                    <!-- Option buttons injected here -->
-                </div>
+                    </div>
 
                 <div id="feedback-message" class="text-center text-lg font-semibold min-h-[30px] my-4">
-                    <!-- "Correct!" or "Wrong!" -->
-                </div>
+                    </div>
 
-                <!-- Navigation -->
                 <div class="flex justify-between items-center mt-6 pt-4 border-t border-gray-700">
                     <button id="prev-question-btn" class="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-md font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -214,7 +195,6 @@ What is 2 + 2?
             </div>
         </div>
 
-        <!-- ===== 4. RESULTS SCREEN ===== -->
         <div id="results-container" class="hidden">
             <div class="bg-gray-800 p-8 rounded-lg text-center shadow-2xl ring-1 ring-gray-700/50">
                 <h2 class="text-3xl font-bold text-white mb-4 tracking-tight">Quiz Complete!</h2>
@@ -236,13 +216,12 @@ What is 2 + 2?
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <span>Finish & Back to List</span>
+                        <span>Finish & Back to Library</span>
                     </button>
                 </div>
             </div>
         </div>
         
-        <!-- ===== 5. REVIEW SCREEN ===== -->
         <div id="review-container" class="hidden">
             <header class="flex items-center justify-between mb-6">
                 <h1 class="text-3xl font-bold text-white tracking-tight">Reviewing Answers</h1>
@@ -255,13 +234,11 @@ What is 2 + 2?
             </header>
             
             <div id="review-list" class="space-y-4">
-                <!-- Review items injected here -->
-            </div>
+                </div>
         </div>
 
     </div>
 
-    <!-- ===== TABLE OF CONTENTS MODAL ===== -->
     <div id="toc-modal-container" class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-gray-800 w-full max-w-2xl rounded-lg shadow-2xl ring-1 ring-gray-700 p-6 relative max-h-[90vh] flex flex-col">
             <h2 class="text-2xl font-bold text-white mb-4">Question List</h2>
@@ -271,7 +248,6 @@ What is 2 + 2?
                 </svg>
             </button>
 
-            <!-- Legend -->
             <div class="flex flex-wrap gap-x-4 gap-y-2 text-xs text-gray-300 mb-4 border-b border-gray-700 pb-3">
                 <div class="flex items-center space-x-1.5">
                     <div class="w-4 h-4 rounded-full bg-green-600"></div><span>Correct</span>
@@ -292,13 +268,49 @@ What is 2 + 2?
             
             <div class="overflow-y-auto">
                 <div id="toc-grid" class="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2">
-                    <!-- TOC buttons injected here -->
-                </div>
+                    </div>
             </div>
         </div>
     </div>
     
-    <!-- Load custom script -->
-    <script src="script.js"></script>
+    <div id="extract-modal-container" class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-gray-800 w-full max-w-2xl rounded-lg shadow-2xl ring-1 ring-gray-700 p-6 relative max-h-[90vh] flex flex-col">
+            <h2 class="text-2xl font-bold text-white mb-2">Extract Quiz</h2>
+            <p id="extract-quiz-name" class="text-sm text-gray-400 mb-4">Quiz Name Here</p>
+            <button id="close-extract-btn" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+
+            <div class="border-b border-gray-700 mb-4">
+                <nav class="-mb-px flex space-x-6">
+                    <button id="extract-tab-btn-json" class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm text-white border-blue-500">
+                        JSON Format
+                    </button>
+                    <button id="extract-tab-btn-text" class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm text-gray-400 border-transparent hover:text-gray-200">
+                        Simple Text Format
+                    </button>
+                </nav>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto">
+                <div id="extract-tab-content-json">
+                    <button id="copy-json-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-sm font-medium mb-2">Copy JSON to Clipboard</button>
+                    <textarea id="extract-json-textarea" rows="10" class="w-full p-2 bg-gray-900 text-gray-200 rounded-md border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" readonly></textarea>
+                </div>
+
+                <div id="extract-tab-content-text" class="hidden">
+                    <button id="copy-text-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-sm font-medium mb-2">Copy Text to Clipboard</button>
+                    <textarea id="extract-text-textarea" rows="10" class="w-full p-2 bg-gray-900 text-gray-200 rounded-md border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" readonly></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+    <script type="module" src="script.js"></script>
 </body>
 </html>
