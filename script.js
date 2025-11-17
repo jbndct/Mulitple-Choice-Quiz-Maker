@@ -66,6 +66,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const simpleTextInput = document.getElementById('simple-text-input');
     const loadQuizBtn = document.getElementById('load-quiz-btn');
     const setupError = document.getElementById('setup-error');
+    // *** NEW ELEMENT REFERENCE ***
+    const publicCheckbox = document.getElementById('public-checkbox');
 
     // Screen 3: Quiz
     const quizContainer = document.getElementById('quiz-container');
@@ -180,7 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- SCREEN 1: QUIZ LIST LOGIC ---
     
-    // --- NEW: Render *Local* Quizzes ---
+    // --- Render *Local* Quizzes ---
     function renderLocalQuizzes() {
         activeQuizList.innerHTML = ''; // Clear local list
         const localQuizzes = appState.localQuizzes;
@@ -267,8 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- MODIFIED: Load Public Quizzes from Firebase ---
-    // Renamed from loadAndRenderPublicQuizzes
+    // --- Load Public Quizzes from Firebase ---
     async function fetchAndRenderPublicQuizzes() {
         publicQuizList.innerHTML = '<p class="text-gray-400">Loading public quizzes...</p>';
         noPublicQuizzesMessage.classList.add('hidden');
@@ -309,8 +310,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- NEW: Render *Public* Quiz List ---
-    // Extracted from old renderQuizList
+    // --- Render *Public* Quiz List ---
     function renderPublicQuizList(publicQuizzes) {
         publicQuizList.innerHTML = ''; // Clear existing list
         
@@ -347,7 +347,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     progressText = `Not started (${totalQuestions} questions)`;
                 }
 
-                // --- NEW: Admin Delete Button ---
+                // --- Admin Delete Button ---
                 const adminDeleteButton = `
                     <button data-id="${publicQuiz.id}" class="delete-public-btn bg-red-800 hover:bg-red-700 text-white px-3 py-2 rounded-md text-sm font-medium flex items-center justify-center space-x-2">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -400,7 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.addEventListener('click', (e) => showExtractModal(e.currentTarget.dataset.id));
             });
 
-            // --- NEW: Admin Delete Listener ---
+            // --- Admin Delete Listener ---
             if (isAdmin) {
                 publicQuizList.querySelectorAll('.delete-public-btn').forEach(btn => {
                     btn.addEventListener('click', async (e) => {
@@ -429,7 +429,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- SCREEN 2: SETUP LOGIC ---
 
     function switchSetupTab(tab) {
-        // ... (unchanged)
+        // (Unchanged)
         currentLoadTab = tab;
         if (tab === 'json') {
             tabBtnJson.classList.add('text-white', 'border-blue-500');
@@ -454,7 +454,7 @@ document.addEventListener('DOMContentLoaded', () => {
     tabBtnText.addEventListener('click', () => switchSetupTab('text'));
     
     fileInput.addEventListener('change', (e) => {
-        // ... (unchanged)
+        // (Unchanged)
         const file = e.target.files[0];
         if (file) {
             fileNameDisplay.textContent = file.name;
@@ -465,11 +465,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- MODIFIED: loadQuizBtn (Now saves LOCALLY) ---
+    // --- *** MODIFIED: loadQuizBtn (Now saves LOCALLY or PUBLICLY) *** ---
     loadQuizBtn.addEventListener('click', async () => {
         loadQuizBtn.disabled = true;
-        loadQuizBtn.textContent = 'Saving locally...';
         
+        // --- NEW: Checkbox logic ---
+        const isPublic = publicCheckbox.checked;
+        loadQuizBtn.textContent = isPublic ? 'Saving to Public Library...' : 'Saving locally...';
+        // ---
+
         let quizName = "Pasted Quiz";
         let quizData = null;
 
@@ -499,20 +503,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (validateQuizData(quizData)) {
                 
-                // --- NEW: Save Locally ---
-                const newQuizId = `local_${Date.now()}`;
-                const newLocalQuiz = {
-                    id: newQuizId,
-                    name: quizName,
-                    quizData: quizData
-                };
-                saveLocalQuiz(newLocalQuiz); // Saves to appState.localQuizzes
+                let newQuizId;
                 
+                // --- NEW: Conditional Save ---
+                if (isPublic) {
+                    // Save to Firebase
+                    const newPublicQuiz = {
+                        name: quizName,
+                        quizData: quizData
+                    };
+                    const docRef = await quizCollection.add(newPublicQuiz);
+                    newQuizId = docRef.id; // Use the ID from Firebase
+                    console.log("Quiz saved to Firebase with ID:", newQuizId);
+                } else {
+                    // Save Locally
+                    newQuizId = `local_${Date.now()}`;
+                    const newLocalQuiz = {
+                        id: newQuizId,
+                        name: quizName,
+                        quizData: quizData
+                    };
+                    saveLocalQuiz(newLocalQuiz); // Saves to appState.localQuizzes
+                }
                 // ---
                 
-                // Create the local progress
+                // Create the local progress (for *both* types)
                 const newQuizProgress = {
-                    id: newQuizId, // Use the new local ID
+                    id: newQuizId, // Use the new ID (local or public)
                     currentQuestionIndex: 0,
                     score: 0,
                     userAnswers: new Array(quizData.length).fill(null),
@@ -524,7 +541,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 saveStateToStorage();
                 
                 resetSetupForm();
-                startQuiz(newQuizId); // Start the quiz using the new local ID
+                startQuiz(newQuizId); // Start the quiz
 
             } else {
                 throw new Error('Invalid quiz data structure.');
@@ -533,21 +550,22 @@ document.addEventListener('DOMContentLoaded', () => {
             showSetupError(error.message);
         } finally {
             loadQuizBtn.disabled = false;
-            loadQuizBtn.textContent = 'Load and Save Locally';
+            loadQuizBtn.textContent = 'Create Quiz'; // Reset button text
         }
     });
 
+    // --- *** MODIFIED: resetSetupForm (resets checkbox) *** ---
     function resetSetupForm() {
-        // ... (unchanged)
         jsonTextInput.value = '';
         simpleTextInput.value = '';
         fileInput.value = null;
         fileNameDisplay.textContent = 'No file chosen';
         setupError.classList.add('hidden');
+        publicCheckbox.checked = false; // Reset the checkbox
     }
 
     function parseSimpleText(text) {
-        // ... (unchanged)
+        // (Unchanged)
         const questionBlocks = text.trim().split(/\n\s*\n/);
         const quizData = [];
 
@@ -584,13 +602,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function showSetupError(message) {
-        // ... (unchanged)
+        // (Unchanged)
         setupError.textContent = message;
         setupError.classList.remove('hidden');
     }
 
     function validateQuizData(data) {
-        // ... (unchanged)
+        // (Unchanged)
         if (!Array.isArray(data) || data.length === 0) return false;
         const firstQuestion = data[0];
         return firstQuestion.hasOwnProperty('questionText') &&
@@ -726,7 +744,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const { progress, definition } = quiz;
         
-        // ... (rest of function is unchanged)
+        // (rest of function is unchanged)
         
         if (progress.visited.length !== definition.quizData.length) {
             progress.visited = new Array(definition.quizData.length).fill(false);
@@ -782,7 +800,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const quiz = getCurrentQuiz();
         if (!quiz) return;
         
-        // ... (rest of function is unchanged)
+        // (rest of function is unchanged)
         const { progress, definition } = quiz;
         const { currentQuestionIndex, quizData } = {
             currentQuestionIndex: progress.currentQuestionIndex,
@@ -811,7 +829,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const quiz = getCurrentQuiz();
         if (!quiz) return;
         
-        // ... (rest of function is unchanged)
+        // (rest of function is unchanged)
         const { progress, definition } = quiz;
         const { currentQuestionIndex, quizData } = {
             currentQuestionIndex: progress.currentQuestionIndex,
@@ -848,7 +866,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const quiz = getCurrentQuiz();
         if (!quiz) return;
         
-        // ... (rest of function is unchanged)
+        // (rest of function is unchanged)
         const { progress, definition } = quiz;
         if (progress.reviewingSkipped) {
             let nextSkippedIndex = progress.userAnswers.indexOf(null, progress.currentQuestionIndex + 1);
@@ -888,7 +906,7 @@ document.addEventListener('DOMContentLoaded', () => {
     nextQuestionBtn.addEventListener('click', goToNextQuestion);
     
     prevQuestionBtn.addEventListener('click', () => {
-        // ... (unchanged)
+        // (Unchanged)
         const quiz = getCurrentQuiz();
         if (!quiz) return;
         if (quiz.progress.currentQuestionIndex > 0) {
@@ -914,7 +932,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        // ... (rest of function is unchanged)
+        // (rest of function is unchanged)
         const { progress, definition } = quiz;
         progress.reviewingSkipped = false;
         updateQuizProgress();
@@ -942,7 +960,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // ... (rest of function is unchanged)
+        // (rest of function is unchanged)
         const { progress, definition } = quiz;
         reviewList.innerHTML = '';
         definition.quizData.forEach((question, index) => {
@@ -989,7 +1007,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const quiz = getCurrentQuiz();
         if (!quiz) return;
         
-        // ... (rest of function is unchanged)
+        // (rest of function is unchanged)
         const { progress, definition } = quiz;
         tocGrid.innerHTML = '';
         definition.quizData.forEach((question, index) => {
@@ -1020,7 +1038,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function hideTocModal() {
-        // ... (unchanged)
+        // (Unchanged)
         tocModalContainer.classList.add('hidden');
     }
 
@@ -1029,17 +1047,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const quiz = getCurrentQuiz();
         if (!quiz) return;
         
-        // ... (rest of function is unchanged)
+        // (rest of function is unchanged)
         quiz.progress.currentQuestionIndex = index;
         updateQuizProgress();
         displayQuestion();
         hideTocModal();
     }
 
-    // --- NEW: EXTRACT MODAL LOGIC (MODIFIED) ---
+    // --- EXTRACT MODAL LOGIC (MODIFIED) ---
 
     function switchExtractTab(tab) {
-        // ... (unchanged)
+        // (Unchanged)
         currentExtractTab = tab;
         if (tab === 'json') {
             extractTabBtnJson.classList.add('text-white', 'border-blue-500');
@@ -1059,7 +1077,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function convertQuizDataToSimpleText(quizData) {
-        // ... (unchanged)
+        // (Unchanged)
         const textBlocks = quizData.map(question => {
             const qText = question.questionText;
             const optionsText = question.options.map((option, index) => {
@@ -1088,7 +1106,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // ... (rest of function is unchanged)
+        // (rest of function is unchanged)
         switchExtractTab('json');
         extractQuizName.textContent = quizDefinition.name;
         const jsonString = JSON.stringify(quizDefinition.quizData, null, 2);
@@ -1101,12 +1119,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function hideExtractModal() {
-        // ... (unchanged)
+        // (Unchanged)
         extractModalContainer.classList.add('hidden');
     }
 
     function copyToClipboard(textarea, button) {
-        // ... (unchanged)
+        // (Unchanged)
         navigator.clipboard.writeText(textarea.value).then(() => {
             button.textContent = 'Copied!';
             setTimeout(() => {
@@ -1168,7 +1186,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- KEYBOARD SHORTCUTS ---
-    // (This section is unchanged, but Extract Modal is included)
+    // (Unchanged)
     document.addEventListener('keydown', (e) => {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
             return; 
@@ -1234,7 +1252,7 @@ document.addEventListener('DOMContentLoaded', () => {
      * Main app initialization function
      */
     function initializeApp() {
-        // --- NEW: Check for admin mode ---
+        // --- Check for admin mode ---
         isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
         if (isAdmin) {
             console.log("Admin mode enabled. Public delete buttons will be visible.");
